@@ -44,9 +44,9 @@ def plotmidi(midi):
     pypianoroll.plot_multitrack(multitrack, axs=[ax])
     plt.show()
 
-def midi_to_audio(midi_path, fs=44100, outputfile="output.wav"):
+def midi_to_audio(midi_path, fs=44100, outputfile="output.wav", tempo=100):
     if isinstance(midi_path, str):
-        midi_data = pretty_midi.PrettyMIDI(midi_path)
+        midi_data = pretty_midi.PrettyMIDI(midi_path, initial_tempo=tempo)
     else:
         midi_data = midi_path
     audio = midi_data.synthesize(fs=fs)
@@ -63,7 +63,7 @@ def roll(X, W, axis=None):
     return sliding_window_view(X, window_shape=W, axis=axis)
 
 
-def multi_hot_to_midi(piano_roll: np.ndarray, time_per_step: float = 0.05,
+def multi_hot_to_midi(piano_roll: np.ndarray, time_per_step: float = 0.2,
                       velocity: int = 100) -> pretty_midi.PrettyMIDI:
     """
     Convert a multi-hot encoded piano roll (2D NumPy array with shape (T, 128)) into a PrettyMIDI object.

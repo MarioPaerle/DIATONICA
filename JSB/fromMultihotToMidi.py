@@ -2,7 +2,7 @@ import joblib
 from intomido.functions import *
 import matplotlib.pyplot as plt
 
-filename = "pred1.pkl"
+filename = "pred5.pkl"
 file = joblib.load(filename)[0]
 print(file)
 t = 0.2
@@ -14,4 +14,4 @@ plt.imshow(file)
 plt.show()
 
 midi = multi_hot_to_midi(file.T)
-audio = midi_to_audio(midi)
+audio = midi_to_audio(midi, outputfile='output4.wav')
