@@ -7,5 +7,6 @@
 4. Make a Se2Seq model capable of generating melodies (the i can harmonize them with the point 2)
 ---
 # 1.
+- Make the BachNet capable of generating new notes, by masking in a more organized way, starting from squares to completly ereasing voices as in the "harmon" dataset
 - Make it less noisy, maybe a more specific loss could help? (L1 + L2 (?))
 - I Should Try Adding another skip connection
