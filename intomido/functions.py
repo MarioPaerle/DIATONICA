@@ -118,3 +118,9 @@ def multi_hot_to_midi(piano_roll: np.ndarray, time_per_step: float = 0.2,
 def add_random_holes(X, p=0.1):
     mask = np.random.rand(*X.shape) > p  # True with probability (1-p)
     return X * mask.astype(X.dtype)
+
+
+def torch_imshow(X, index=0, channels=1):
+    if channels == 1:
+        plt.imshow(X.cpu().numpy()[index, 0, :, :])
+        plt.show()

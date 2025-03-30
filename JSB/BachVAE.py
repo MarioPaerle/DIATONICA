@@ -4,91 +4,60 @@ from torch.optim import Adam
 import numpy as np
 import matplotlib.pyplot as plt
 import joblib
+from intomido.functions import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class BachBlock(nn.Module):
-    def __init__(self, heads=1):
-        super().__init__()
-        layers = []
+class ModifierBlock(nn.Module):
+    def __init__(self, heads=8):
+        super(ModifierBlock, self).__init__()
+        self.att = nn.MultiheadAttention(embed_dim=128, num_heads=heads, batch_first=True)
+        self.convQ = nn.Conv2d(1, 1, 16, padding='same')
+        self.convK = nn.Conv2d(1, 1, 16, padding='same')
+        self.convV = nn.Conv2d(1, 1, 4, padding='same')
 
-        for head in range(heads):
-            layers.append(nn.Conv2d(1, 64, kernel_size=(16, 16), padding='same'))
-            layers.append(nn.ReLU())
-            layers.append(nn.Conv2d(64, 64, kernel_size=(8, 8), padding='same'))
-            layers.append(nn.ReLU())
-            layers.append(nn.Conv2d(64, 1, kernel_size=(4, 4), padding='same'))
-            layers.append(nn.ReLU())
-            layers.append(nn.Dropout(0.1))
-
-        self.mod = nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.mod(x) + x
+        Q = self.convQ(x)[:, 0, :, :].transpose(2, 1)
+        K = self.convK(x)[:, 0, :, :].transpose(2, 1)
+        V = self.convV(x)[:, 0, :, :].transpose(2, 1)
+        att = self.att(Q, V, K)[0]
+        att = att.transpose(2, 1).view(*x.shape)
+        return x + att
+
+
+class Modifier(nn.Module):
+    def __init__(self, heads=8, repetition=10):
+        super(Modifier, self).__init__()
+        self.blocks = []
+        for i in range(repetition):
+            self.blocks.append(ModifierBlock(heads))
+            self.blocks.append(nn.Conv2d(1, 32, 4, padding='same'))
+            self.blocks.append(nn.ReLU())
+            self.blocks.append(nn.Conv2d(32, 1, 4, padding='same'))
+            self.blocks.append(nn.ReLU())
+
+        self.blocks = nn.Sequential(*self.blocks)
+
+    def forward(self, x):
+        for block in self.blocks:
+            x = block(x) + x
         return x
 
+if __name__ == '__main__':
+    model = Modifier(1)
 
-class BachVAE(nn.Module):
-    def __init__(self):
-        super(BachVAE, self).__init__()
-        self.preprocesser = BachBlock(8)
-        self.encoder = nn.Sequential(
-            nn.Conv2d(1, 64, kernel_size=(16, 16), stride=(4, 2)),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(64, 64, kernel_size=(8, 8), stride=(2, 2)),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(64, 2, kernel_size=(4, 4)),
-            nn.LeakyReLU(0.2)
-        )
+    optim = Adam(model.parameters(), lr=0.01)
+    criterion = nn.MSELoss()
 
-        self.d1 = nn.Dropout(0.2)
-        self.ztodec = nn.Linear(32, 1024)
-
-        self.mean_layer = nn.Linear(240, 32)
-        self.logvar_layer = nn.Linear(240, 32)
-
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(8, 256, kernel_size=(4, 4)),
-            nn.LeakyReLU(0.2),
-            nn.ConvTranspose2d(256, 256, kernel_size=(9, 7), stride=(2, 2)),
-            nn.LeakyReLU(0.2),
-            nn.ConvTranspose2d(256, 1, kernel_size=(16, 16), stride=(4, 2)),
-            nn.LeakyReLU(0.2)
-        )
-
-    def encode(self, x):
-        x = self.encoder(x)
-        x = self.d1(x)
-        x = x.flatten(1)
-        mean, logvar = self.mean_layer(x), self.logvar_layer(x)
-        return mean, logvar
-
-    def reparameterization(self, mean, var):
-        epsilon = torch.randn_like(var).to(device)
-        z = mean + var * epsilon
-        return z
-
-    def decode(self, x):
-        return self.decoder(x)
-
-    def forward(self, x):
-        mean, logvar = self.encode(x)
-        z = self.reparameterization(mean, logvar)
-        z = self.ztodec(z)
-        z = z.view(z.shape[0], 8, 8, 16)
-        x_hat = self.decode(z)
-        return x_hat, mean, logvar
+    dummy = torch.rand(10, 1, 128, 100)
+    torch_imshow(dummy)
+    torch_imshow(torch.roll(dummy, shifts=(16,), dims=(3,)))
+    with torch.no_grad():
+        X = model(dummy)
+        torch_imshow(X)
 
 
-model = BachNet(16) #  with 8 "heads" it performs as well as 16
-if torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
-        model = nn.DataParallel(model).cuda()
 
-optim = Adam(model.parameters(), lr=0.01)
-# criterion = nn.MSELoss()
-criterion = nn.L1Loss()
-model = model.to(device)
-total_params = sum(p.numel() for p in model.parameters())
-print(f"Number of parameters: {total_params}")
+

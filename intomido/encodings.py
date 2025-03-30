@@ -44,21 +44,36 @@ X has to be [N, C, W, H]"""
     return np.concatenate([holed, encoded], axis=1)
 
 
+def square_hole(X, p, l=1, m=100):
+    """
+    Generates random squares of zeros inside the given array X with probability p.
 
+    Parameters:
+    - X: The input array of shape [N, C, W, H].
+    - p: The probability (between 0 and 1) of a square being placed in each channel.
 
-
+    Returns:
+    - An array of the same shape as X, with random squares replaced by zeros.
+    """
+    N, C, W, H = X.shape
+    for n in range(N):
+        for c in range(C):
+            if np.random.rand() < p:
+                square_size = np.random.randint(l, m)
+                x_start = np.random.randint(0, W - square_size + 1)
+                y_start = np.random.randint(0, H - square_size + 1)
+                X[n, c, x_start:x_start + square_size, y_start:y_start + square_size] = 0
+    return X
 
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    X = np.random.rand(10, 1, 10, 10)
-    X_holed = add_random_holes(X, p=0.00)
-    X_blurred = add_blur(X_holed, 0.1)
-    X_blurred2 = add_blur(X_holed, 1)
-
-    enc = timestep_hole(X, 3)
-    print(enc.shape)
+    X = np.random.rand(10, 1, 100, 100)
+    X_holed = square_hole(X, 1)
+    print(X_holed.shape)
+    plt.imshow(X_holed[0, 0, :, :])
+    plt.show()
     """plt.subplot(1, 3, 1)
     plt.imshow(X_blurred[0, 0, :, :])
     plt.subplot(1, 3, 2)
