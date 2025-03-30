@@ -14,3 +14,14 @@
 
 ## 3.
 - The BachVAE is finally generating music! the KL is essential, and the MSE helps reducing the noise; I shoul probably try using a L1 loss instead tho
+
+---
+
+# Questions:
+- Bigger Batchsize are better with VAE? it seems to me like random pieces of bach for example aren't well approximating the datasets with small samples
+- NonStochastic (with Momentum) Optimization to form a more compact latent space in VAE?
+- Can PCA help in choosing the right Latent Space dimensions?
+
+
+
+
