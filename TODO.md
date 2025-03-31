@@ -18,7 +18,7 @@
 ---
 
 # Questions:
-- Bigger Batchsize are better with VAE? it seems to me like random pieces of bach for example aren't well approximating the datasets with small samples
+- Bigger Batch sizes are better with VAE? it seems to me like random pieces of bach for example aren't well approximating the datasets with small samples
 - NonStochastic (with Momentum) Optimization to form a more compact latent space in VAE?
 - Can PCA help in choosing the right Latent Space dimensions?
 
