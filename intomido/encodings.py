@@ -26,6 +26,7 @@ def add_blur(X, sigma=1.0):
     """This Function applies a Gaussian blur to the input array X."""
     return gaussian_filter(X, sigma=sigma)
 
+
 def timestep_hole(X, t, add_blur=True, hole_per_time=lambda x: 0.1*x, sigma=0.1):
     """This Functions takes X, an image and t, a timestep and adds holes to it.
 Then it adds a soft gaussian blur to mimic the effect of convolution networks, and finally

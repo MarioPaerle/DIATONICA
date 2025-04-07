@@ -124,3 +124,13 @@ def torch_imshow(X, index=0, channels=1):
     if channels == 1:
         plt.imshow(X.cpu().numpy()[index, 0, :, :])
         plt.show()
+
+def np_imshow(X, index=0, channels=1, ncwh=True):
+    if ncwh:
+        if channels == 1:
+            plt.imshow(X[index, 0, :, :])
+            plt.show()
+    else:
+        if channels == 1:
+            plt.imshow(X[index, :, :])
+            plt.show()

@@ -52,9 +52,9 @@ X_rolled = rolled[:, :-1, :, :]
 Y_rolled = rolled[:, 1:, :, :]
 
 holed = transposed
+holed08 = add_random_holes(holed, p=0.8).astype(np.uint8)
 holed05 = add_random_holes(holed, p=0.5).astype(np.uint8)
 holed02 = add_random_holes(holed, p=0.2).astype(np.uint8)
-holed08 = add_random_holes(holed, p=0.8).astype(np.uint8)
 X = transposed.astype(np.uint8)
 X_rolled = X_rolled.astype(np.uint8)
 Y_rolled = Y_rolled.astype(np.uint8)
