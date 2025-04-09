@@ -129,81 +129,11 @@ class SelfAttention(nn.Module):
         return x + out
 
 
-class Block2(nn.Module):
-    def __init__(self, patch, imlp_act=True, c=8):
-        super().__init__()
-        self.imlp_act = imlp_act
-        self.patch_dim = patch
-        self.att = nn.MultiheadAttention(patch ** 2, 1, batch_first=True)
-
-        self.convQ = nn.Conv2d(patch ** 2 * c, patch ** 2, 3, padding='same')
-        self.convK = nn.Conv2d(patch ** 2 * c, patch ** 2, 3, padding='same')
-        self.convV = nn.Conv2d(patch ** 2 * c, patch ** 2, 3, padding='same')
-
-        self.convT = nn.Conv2d(patch ** 2 * c, patch ** 2, 3, padding='same')
-
-        # self.imlp = IMLP(49 * 16, 256)  # 1024
-
-    def forward(self, x):
-        x, t = x
-        # c1 = torch.stack((x, t), axis=1).view(x.shape[0], 2, 28, 28)
-        patched = matrix_to_grid_4d(x, self.patch_dim, self.patch_dim)
-        patched_time = matrix_to_grid_4d(t, self.patch_dim, self.patch_dim)
-
-        patched = patched.flatten(1, 2)
-        patched_time = patched_time.flatten(1, 2)
-        # patched = patched.view(patched.shape[0], patched.shape[1] * patched.shape[2], patched.shape[3],
-        #                       patched.shape[4])
-        # patched_time = patched_time.view(patched_time.shape[0], patched_time.shape[1] * patched_time.shape[2],
-        #                                 patched_time.shape[3], patched_time.shape[4])
-
-        Q = torch.sigmoid(self.convQ(patched))
-        K = torch.sigmoid(self.convK(patched))
-        V = torch.sigmoid(self.convV(patched) + self.convT(patched_time))
-        QFlatten = Q.flatten(2).permute(0, 2, 1)
-        KFlatten = K.flatten(2).permute(0, 2, 1)
-        VFlatten = V.flatten(2).permute(0, 2, 1)
-        att, _ = self.att(QFlatten, KFlatten, VFlatten)
-
-        att = att.permute(0, 2, 1).view(att.shape[0], att.shape[2], 1, patched.shape[3], patched.shape[3])
-
-        out = grid_to_matrix_4d(att, self.patch_dim, self.patch_dim) + x
-        return out
-
-
-class VarDoubleConv(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(VarDoubleConv, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1)  # è come padding same in questo caso
-        self.r1 = nn.ReLU(inplace=True)
-
-        self.cmu = nn.Conv2d(in_channels, 1, kernel_size=3, padding=1)
-        self.cvar = nn.Conv2d(in_channels, 1, kernel_size=3, padding=1)
-
-        self.outconv = nn.Conv2d(1, out_channels, kernel_size=3, padding=1)
-        self.r2 = nn.ReLU(inplace=True)
-
-    def forward(self, x):
-        _in = x
-        x = self.r1(self.conv1(x))
-
-        mean = self.cmu(x)
-        logvar = self.cvar(x)
-
-        epsilon = torch.randn_like(logvar)
-        z = mean + torch.exp(logvar) * epsilon
-
-        out = self.outconv(z)
-        out = self.r2(out)
-
-        return out, mean, logvar
-
-
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(DoubleConv, self).__init__()
         self.double_conv = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),  # è come padding same in questo caso
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
@@ -215,34 +145,61 @@ class DoubleConv(nn.Module):
         return self.double_conv(x)
 
 
+class VarDoubleConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(VarDoubleConv, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.r1 = nn.ReLU(inplace=True)
+        self.conv_mu = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
+        self.conv_sigma = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
+        self.outconv = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.r2 = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.r1(x)
+        mean = self.conv_mu(x)
+        logvar = self.conv_sigma(x)
+
+        z = torch.distributions.Normal(mean, torch.exp(logvar))
+
+        x2 = self.outconv(z)
+        x2 = self.bn2(x2)
+        x2 = self.r2(x2)
+        return x2, mean, logvar
+
+
 class Down(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(Down, self).__init__()
-        self.maxpool_conv = nn.Sequential(
+        self.down = nn.Sequential(
             nn.MaxPool2d(2),
             DoubleConv(in_channels, out_channels)
         )
 
     def forward(self, x):
-        return self.maxpool_conv(x)
+        return self.down(x)
 
 
 class Up(nn.Module):
-    def __init__(self, in_channels, skip_channels, out_channels, bilinear=True):
+    def __init__(self, in_channels, out_channels, bilinear=True):
         super(Up, self).__init__()
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         else:
-            self.up = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=2, stride=2)
-        self.conv = DoubleConv(in_channels + skip_channels, out_channels)
+            self.up = nn.ConvTranspose2d(in_channels // 2, in_channels // 2, kernel_size=2, stride=2)
+        self.conv = DoubleConv(in_channels, out_channels)
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
-        diffY = x2.size(2) - x1.size(2)
-        diffX = x2.size(3) - x1.size(3)
-        x1 = torch.nn.functional.pad(x1, [diffX // 2, diffX - diffX // 2,
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
                         diffY // 2, diffY - diffY // 2])
-        x = torch.cat([x2, x1], dim=1)  # concatena lungo i canali
+        x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
 
 
@@ -256,70 +213,51 @@ class OutConv(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True, c=64):
+    def __init__(self, n_channels=4, n_classes=3, bilinear=True, c=1):
         super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
+        self.bilinear = bilinear
 
-        # Attention
-        self.denoiser = DetailerDenoiser(c)
-        self.att1 = SelfAttention(c * 2)
-        self.att2 = SelfAttention(c * 4)
-        self.attB = SelfAttention(c * 8)
-        self.attB5 = SelfAttention(c * 16)
+        self.inc = DoubleConv(n_channels, 64 * c)
+        self.down1 = Down(64 * c, 128 * c)
+        self.down2 = Down(128 * c, 256 * c)
+        self.down3 = Down(256 * c, 512 * c)
+        factor = 2 if bilinear else 1
+        self.down4 = Down(512 * c, 1024 * c // factor)
 
-        # Encoder
-        self.inc = DoubleConv(n_channels, c)
-        self.down1 = Down(c, c * 2)
-        self.down2 = Down(c * 2, c * 4)
-        self.down3 = Down(c * 4, c * 8)
+        self.up1 = Up(1024 * c, 512 * c // factor, bilinear)
+        self.up2 = Up(512 * c, 256 * c // factor, bilinear)
+        self.up3 = Up(256 * c, 128 * c // factor, bilinear)
+        self.up4 = Up(128 * c, 64 * c, bilinear)
+        self.outc = OutConv(64 * c, n_classes)
 
-        # Latent
-        self.pool_latent = nn.AdaptiveAvgPool2d((16, 16))
-        self.bottleneck = DoubleConv(c * 8, c * 16)
 
-        # Decoder
-        self.up1 = Up(c * 16, c * 8, c * 8, bilinear)
-        self.up2 = Up(c * 8, c * 4, c * 4, bilinear)
-        self.up3 = Up(c * 4, c * 2, c * 2, bilinear)
-        self.up4 = Up(c * 2, c, c, bilinear)
-        self.outc = OutConv(c, n_classes)
+        # self.att0 = SelfAttention(64*c)
+        self.att1 = SelfAttention(128*c)
+        self.att2 = SelfAttention(256*c)
+        self.attLAT1 = SelfAttention(1024*c // factor)
 
-        # Time Step Encoder
-        self.time_inc = DoubleConv(1, c)
-        self.time_down1 = Down(c, c * 2)
-        self.time_down2 = Down(c * 2, c * 4)
-        self.time_down3 = Down(c * 4, c * 8)
-
-    def forward(self, x, t):
-        # Encoder
+    def forward(self, image, embedding):
+        x = torch.cat([image, embedding], dim=1)
         x1 = self.inc(x)
+
         x2 = self.down1(x1)
         x2 = self.att1(x2)
+
         x3 = self.down2(x2)
-        x3 = self.att2(x3)
+        x3 = self.att1(x3)
+
         x4 = self.down3(x3)
+        x5 = self.down4(x4)
 
-        # Time Encode
-        t1 = self.time_inc(t)
-        t2 = self.time_down1(t1)
-        t3 = self.time_down2(t2)
-        t4 = self.time_down3(t3)
+        x5 = self.attLAT1(x5)
 
-        # Latent
-        x4_latent = self.pool_latent(x4)
-        x4_latent = self.attB(x4_latent)
-
-        x5 = self.bottleneck(x4_latent)
-        x5 = self.attB5(x5)
-
-        # Decoder
-        x = self.up1(x5, x4 + t4)
-        x = self.up2(x, x3 + t3)
-        x = self.up3(x, x2 + t2)
-        x = self.up4(x, x1 + t1)
-        x = self.denoiser(x)
-        logits = torch.tanh(self.outc(x))
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
+        logits = self.outc(x)
         return logits
 
 
