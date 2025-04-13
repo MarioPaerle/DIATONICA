@@ -2,7 +2,7 @@ import joblib
 from intomido.functions import *
 import matplotlib.pyplot as plt
 
-filename = "VAEpred10.pkl"
+filename = "VAEpred9.pkl"
 name = filename.split('.')[0]
 file = joblib.load(filename)
 print(file)
