@@ -20,3 +20,18 @@ class Message:
     def tomido(self, time=None):
         return mido.Message('note_'+self.action, note=self.note, velocity=self.velocity, time=self.time if time is None else time, channel=self.channel)
 
+
+class Token:
+    def __init__(self, msg: Message, time, pos_em):
+        self.time = time
+        self.underline = msg
+        self.pos_em = pos_em
+
+    def get_mido(self):
+        return self.underline
+
+    def get_str(self):
+        note = self.underline.note
+        velocity = self.underline.velocity
+        return f"{note}-{velocity}-{self.time}-{self.pos_em}"
+
