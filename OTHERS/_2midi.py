@@ -203,10 +203,10 @@ class EasyTok:
         self.tokens = []
 
 
-    def tokenize(self, transpose=False):
+    def tokenize(self, transpose=False, explicit_delta=0):
         abs_time = 0
         string = f"{self.numerator}/{self.denominator}\n"
-        delta = KEY_IMPLICI_TRANSPOSE[self.key] if transpose else 0
+        delta = (KEY_IMPLICI_TRANSPOSE[self.key] if transpose else 0) + explicit_delta
         delta_time = 0
         for msg in self.midi.merged_track:
             time = msg.time
@@ -251,8 +251,8 @@ class EasyDeTok:
 
 
 midis = os.listdir("MuseScoreMIDIS")
-example = f"MuseScoreMIDIS/{midis[0]}"
-print(example)
+example = f"MuseScoreMIDIS/{midis[300]}"
+
 mid = MidiFile(example)
 tok = EasyTok(mid)
 tok.tokenize()
