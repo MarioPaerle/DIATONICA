@@ -188,6 +188,7 @@ class MidiDeTok:
 
 class EasyTok:
     def __init__(self, midi: MidiFile):
+        """The Tokenizer as implemented now, is specific for a midi file, parsed using Mido"""
         self.midi = midi
 
         for msg in midi:
@@ -202,8 +203,13 @@ class EasyTok:
         self.ticker = midi.ticks_per_beat
         self.tokens = []
 
-
     def tokenize(self, transpose=False, explicit_delta=0):
+        """Actually tokenizes the midi file.
+        :param: transpose : it automatically transpose to C major if the scale is known
+        :explicit_delta: it transpose the midi file up of explicit_delta semitones
+
+        :return: the method returns a string which is the tokenized notes with numerator/denominator
+        of the time signature before."""
         abs_time = 0
         string = f"{self.numerator}/{self.denominator}\n"
         delta = (KEY_IMPLICI_TRANSPOSE[self.key] if transpose else 0) + explicit_delta
@@ -224,12 +230,14 @@ class EasyTok:
 
             delta_time = 0
         self.str_value = string
+        return self.str_value
 
     def __str__(self):
         return self.str_value
 
 class EasyDeTok:
     def __init__(self, string: str):
+        """This Object reads the EasyTok type Encoding and detokenize it"""
         self.str = string
         self.events = dict()
         self.midi = MidiFile()
@@ -249,14 +257,16 @@ class EasyDeTok:
 
 
 
-
 midis = os.listdir("MuseScoreMIDIS")
-example = f"MuseScoreMIDIS/{midis[300]}"
+print(len(midis))
+example = f"MuseScoreMIDIS/{midis[0]}"
 
 mid = MidiFile(example)
 tok = EasyTok(mid)
 tok.tokenize()
 string = str(tok)
+print(string)
+print(len(string.split()))
 detok = EasyDeTok(string)
 detok.decode()
 detok.export()
