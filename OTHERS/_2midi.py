@@ -224,7 +224,7 @@ class EasyTok:
             if delta > 0:
                 msg.note += delta
 
-            token = Token(msg, time + delta_time, int(abs_time % (self.ticker * (self.numerator / self.denominator))))
+            token = Token(msg, time + delta_time, (abs_time % (self.ticker * self.numerator)) // self.denominator)
             self.tokens.append(token)
             string += token.get_str() + " "
 
@@ -234,6 +234,34 @@ class EasyTok:
 
     def __str__(self):
         return self.str_value
+
+    def __len__(self):
+        return len(self.tokens)
+
+    def shape(self):
+        return len(self), len(self.tolist())
+
+    def get_notes(self):
+        return self.str_value.split('\n')[1]
+
+    def tolist(self):
+        musewords = [[]]
+        loops = -1
+        last_periodot = 720
+        for token in self.get_notes().split(' '):
+            if len(token) < 3:
+                break
+            periodot = token.split('-')[3]
+            if int(periodot) == 0 and last_periodot != periodot:
+                loops += 1
+                musewords.append([])
+
+            musewords[loops].append(token)
+            last_periodot = periodot
+
+        return musewords[:-1]
+
+
 
 class EasyDeTok:
     def __init__(self, string: str):
@@ -259,26 +287,22 @@ class EasyDeTok:
 
 midis = os.listdir("MuseScoreMIDIS")
 print(len(midis))
-example = f"MuseScoreMIDIS/{midis[0]}"
+example = f"MuseScoreMIDIS/{midis[165]}"
 
 mid = MidiFile(example)
 tok = EasyTok(mid)
 tok.tokenize()
 string = str(tok)
+"""
 print(string)
 print(len(string.split()))
 detok = EasyDeTok(string)
 detok.decode()
 detok.export()
+"""
 
+print(tok.tolist())
 
-"""m = MidiTok(mid)
-m.tokenize()
-string = str(m)
-print(string)
-detok = MidiDeTok(string)
-detok.parse()
-detok.export('tryo.mid')"""
 
 
 
