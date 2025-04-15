@@ -120,7 +120,7 @@ class StringBPE:
 
             if not stats:
                 print("No more pairs to merge.")
-                break # No more pairs to merge
+                break
 
             best_pair = max(stats, key=stats.get)
             pair_freq = stats[best_pair]
@@ -203,45 +203,24 @@ if __name__ == '__main__':
         ['15.64.76', '14.15.36']  # Sequence 3
     ]
 
-    # Number of merges to perform
-    num_merges = 3  # Increased merges to see more effect
-
-    # 1. Initialize and Train
+    num_merges = 3
     bpe_processor = StringBPE(unknown_token="<UNK>")
     bpe_processor.train(corpus, num_merges)
 
     print("\nLearned Merges:", bpe_processor.merges)
-    # print("Final Vocabulary:", sorted(list(bpe_processor.vocab)))
-    # print("Token to ID mapping:", bpe_processor.token_to_id)
 
-    # --- Tokenizing Examples ---
-    print("\n--- Tokenizing Examples ---")
     sequence_to_tokenize = ['15.64.76', '14.15.36', '14.6.3', '99.99.99', '15.64.76', 'unknown_token']
-    print(f"Original Sequence: {sequence_to_tokenize}")
-
-    # Tokenize into strings
     tokenized_strings = bpe_processor.tokenize(sequence_to_tokenize)
     print(f"Tokenized (Strings): {tokenized_strings}")
-
-    # Tokenize into vector (IDs)
     tokenized_vector = bpe_processor.tokenize_vector(sequence_to_tokenize)
-    print(f"Tokenized (Vector): {tokenized_vector}")
 
-    # --- Detokenizing Example ---
-    print("\n--- Detokenizing Example ---")
-    vector_to_detokenize = tokenized_vector + [100]  # Add a fake ID to test unknown handling
+    vector_to_detokenize = tokenized_vector + [100]
     print(f"Vector to Detokenize: {vector_to_detokenize}")
 
     detokenized_sequence = bpe_processor.detokenize(vector_to_detokenize)
     print(f"Detokenized Sequence: {detokenized_sequence}")
 
-    # Example with the user's initial sequence treated as one sequence
-    print("\n--- Processing User's Example Sequence ---")
     user_sequence = ['15.64.76', '14.15.36', '14.6.3']
-    print("Original User Sequence:", user_sequence)
     tokenized_user_strings = bpe_processor.tokenize(user_sequence)
-    print("Tokenized User Sequence (Strings):", tokenized_user_strings)
     tokenized_user_vector = bpe_processor.tokenize_vector(user_sequence)
-    print("Tokenized User Sequence (Vector):", tokenized_user_vector)
     detokenized_user_sequence = bpe_processor.detokenize(tokenized_user_vector)
-    print("Detokenized User Sequence:", detokenized_user_sequence)
