@@ -186,11 +186,13 @@ class MidiDeTok:
         self.midi.save(filename=filename)
 """
 
+def binner(c):
+    return round(c, -1)
+
 class EasyTok:
     def __init__(self, midi: MidiFile):
         """The Tokenizer as implemented now, is specific for a midi file, parsed using Mido"""
         self.midi = midi
-
         for msg in midi:
             if msg.type == 'time_signature':
                 self.numerator = msg.numerator
@@ -200,10 +202,11 @@ class EasyTok:
             if msg.type == 'key_signature':
                 self.key = msg.key
 
+
         self.ticker = midi.ticks_per_beat
         self.tokens = []
 
-    def tokenize(self, transpose=False, explicit_delta=0):
+    def tokenize(self, transpose=False, explicit_delta=0, only_start=False):
         """Actually tokenizes the midi file.
         :param: transpose : it automatically transpose to C major if the scale is known
         :explicit_delta: it transpose the midi file up of explicit_delta semitones
@@ -224,9 +227,12 @@ class EasyTok:
             if delta > 0:
                 msg.note += delta
 
-            token = Token(msg, time + delta_time, (abs_time % (self.ticker * self.numerator)) // self.denominator)
-            self.tokens.append(token)
-            string += token.get_str() + " "
+            if msg.velocity > 0 and not only_start:
+                rel_time = (abs_time % (self.ticker * self.numerator)) // self.denominator
+                rel_time = binner(rel_time)
+                token = Token(msg, time + delta_time, rel_time)
+                self.tokens.append(token)
+                string += token.get_str(False) + " "
 
             delta_time = 0
         self.str_value = string
@@ -251,7 +257,7 @@ class EasyTok:
         for token in self.get_notes().split(' '):
             if len(token) < 3:
                 break
-            periodot = token.split('-')[3]
+            periodot = token.split('-')[-1]
             if int(periodot) == 0 and last_periodot != periodot:
                 loops += 1
                 musewords.append([])
@@ -260,8 +266,6 @@ class EasyTok:
             last_periodot = periodot
 
         return musewords[:-1]
-
-
 
 class EasyDeTok:
     def __init__(self, string: str):
@@ -283,26 +287,24 @@ class EasyDeTok:
         self.midi.tracks.append(self.track)
         self.midi.save(filename=filename)
 
+if __name__ == '__main__':
+    midis = os.listdir("MuseScoreMIDIS")
+    print(len(midis))
+    example = f"MuseScoreMIDIS/{midis[165]}"
 
+    mid = MidiFile(example)
+    tok = EasyTok(mid)
+    tok.tokenize()
+    string = str(tok)
 
-midis = os.listdir("MuseScoreMIDIS")
-print(len(midis))
-example = f"MuseScoreMIDIS/{midis[165]}"
+    """
+    print(string)
+    print(len(string.split()))
+    detok = EasyDeTok(string)
+    detok.decode()
+    detok.export()
+    """
 
-mid = MidiFile(example)
-tok = EasyTok(mid)
-tok.tokenize()
-string = str(tok)
-"""
-print(string)
-print(len(string.split()))
-detok = EasyDeTok(string)
-detok.decode()
-detok.export()
-"""
-
-print(tok.tolist())
-
-
+    print(tok.tolist())
 
 

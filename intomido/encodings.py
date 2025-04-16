@@ -153,7 +153,6 @@ class StringBPE:
         self.id_to_token = {i: token for token, i in self.token_to_id.items()}
         print(f"Built token-ID mappings. Vocab size (incl. {self.unknown_token}): {len(self.token_to_id)}")
 
-
     def tokenize(self, sequence: List[str]) -> List[str]:
         if not self.merges:
             print("Warning: BPE model has not been trained or no merges were learned. Returning original sequence.")

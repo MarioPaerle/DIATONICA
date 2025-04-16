@@ -30,8 +30,13 @@ class Token:
     def get_mido(self):
         return self.underline
 
-    def get_str(self):
+    def get_str(self, time=True):
         note = self.underline.note
         velocity = self.underline.velocity
-        return f"{note}-{velocity}-{self.time}-{self.pos_em}"
+        if velocity > 0:
+            velocity = 100
+        if time:
+            return f"{note}-{velocity}-{self.time}-{self.pos_em}"
+        else:
+            return f"{note}-{velocity}-{self.pos_em}"
 
