@@ -287,6 +287,13 @@ class EasyDeTok:
         self.midi.tracks.append(self.track)
         self.midi.save(filename=filename)
 
+class GridTokenizer:
+    def __init__(self, midi: str):
+        self.midi = MidiFile(midi)
+        self.grid = None
+        pass
+
+
 if __name__ == '__main__':
     midis = os.listdir("MuseScoreMIDIS")
     print(len(midis))
