@@ -1,13 +1,21 @@
 from intomido.encodings import StringBPE
-from tokenizers import EasyTok
+from GridTokenizer import tokenize, add_bars
 import os
-from mido import MidiFile
+import GridTokenizer
+import joblib
 
 files = os.listdir("MuseScoreMIDIS")
 midis = []
 entokened = []
 for file in files:
-    try:
+    if file.endswith(".mid"):
+        try:
+            io = tokenize(f'MuseScoreMIDIS/{file}', cycle_length_beats=4, subdivisions_per_beat=8)
+            io = add_bars(io)
+            entokened.append(io)
+        except:
+            print(file)
+    """try:
         midis.append(file)
         midi = MidiFile(f"MuseScoreMIDIS/{file}")
         tok = EasyTok(midi)
@@ -15,11 +23,12 @@ for file in files:
         for token in tok.tolist():
             entokened.append(token)
     except:
-        print(f"Error with {file}")
+        print(f"Error with {file}")"""
 
 
 ENCODER = StringBPE()
-ENCODER.train(entokened, num_merges=100)
-#print(ENCODER.vocab)
-print(len(ENCODER.vocab))
+ENCODER.train(entokened, num_merges=1)
 
+print(ENCODER.tokenize(io))
+
+# joblib.dump(ENCODER, "MID_ENCODER2.pkl")

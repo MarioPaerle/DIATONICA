@@ -87,7 +87,7 @@ class StringBPE:
 
     def _merge_pair(self, pair_to_merge: Tuple[str, str], sequences_in: List[List[str]]) -> List[List[str]]:
         token_a, token_b = pair_to_merge
-        new_token = token_a + token_b
+        new_token = token_a + ' ' + token_b
         sequences_out = []
         for sequence in sequences_in:
             new_sequence = []
