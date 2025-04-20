@@ -25,6 +25,8 @@ for file in files:
     except:
         print(f"Error with {file}")"""
 
+print(sum([len(k) for k in entokened]))
+
 
 ENCODER = StringBPE()
 ENCODER.train(entokened, num_merges=1)
