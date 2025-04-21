@@ -4,13 +4,13 @@ import os
 import GridTokenizer
 import joblib
 
-files = os.listdir("MuseScoreMIDIS")
+files = os.listdir("MuseScoreMIDIS2")
 midis = []
 entokened = []
 for file in files:
     if file.endswith(".mid"):
         try:
-            io = tokenize(f'MuseScoreMIDIS/{file}', cycle_length_beats=4, subdivisions_per_beat=8)
+            io = tokenize(f'MuseScoreMIDIS2/{file}', cycle_length_beats=4, subdivisions_per_beat=8)
             io = add_bars(io)
             entokened.append(io)
         except:
@@ -29,8 +29,18 @@ print(sum([len(k) for k in entokened]))
 
 
 ENCODER = StringBPE()
-ENCODER.train(entokened, num_merges=1)
+ENCODER.train(entokened, num_merges=500)
 
-print(ENCODER.tokenize(io))
+tokenized = []
+for file in files:
+    if file.endswith(".mid"):
+        try:
+            io = tokenize(f'MuseScoreMIDIS2/{file}')
+            io = add_bars(io)
+            tokenized.append(ENCODER.tokenize_vector(io))
+        except:
+            print(file)
 
-# joblib.dump(ENCODER, "MID_ENCODER2.pkl")
+joblib.dump(tokenized, "tokenized_test2.pkl")
+joblib.dump(ENCODER, "tokenizer_test2.pkl")
+

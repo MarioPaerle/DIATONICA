@@ -35,6 +35,8 @@ def tokenize(
     beats = pm.get_beats()
     events: list[tuple[float, str]] = []
 
+    past_cyc_pos = -1
+
     for note in inst.notes:
         idx = np.searchsorted(beats, note.start) - 1
         idx = max(0, min(idx, len(beats) - 2))
@@ -46,9 +48,14 @@ def tokenize(
         cycle_ticks = cycle_length_beats * subdivisions_per_beat
         cyc_pos = total_ticks % cycle_ticks
 
+        if cyc_pos != past_cyc_pos:
+            events.append((note.start, '<pos>'))
+
         token = f"{note.pitch}.{100 if note.velocity > 0 else 0}.{cyc_pos}"
         events.append((note.start, token))
 
+
+        past_cyc_pos = cyc_pos
     for _, tok in sorted(events, key=lambda x: x[0]):
         tokens.append(tok)
 
@@ -67,12 +74,15 @@ def add_bars(tokens):
     return tokens2[1:]
 
 def remove_bars(tokens):
+    """This function will remove all the positional encoding tokens: like <bar>, <pos>"""
+
     lines2 = []
     for line in tokens:
-        if '<bar>' in line:
+        if '<bar>' in line or '<pos>' in line:
             continue
         lines2.append(line)
     return lines2
+
 
 def save_tokens(tokens: list[str], filepath: str, putbars=False) -> None:
     """Save tokens to a text file, one per line."""
