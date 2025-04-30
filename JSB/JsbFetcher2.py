@@ -60,7 +60,6 @@ harmonies = np.array(mod_to_midi_representation(harmonies, 1))
 X = transposed.astype(np.uint8)
 melodies = melodies.astype(np.uint8)
 harmonies = harmonies.astype(np.uint8)
-
 input('save >>>   ')
 
 datas = {

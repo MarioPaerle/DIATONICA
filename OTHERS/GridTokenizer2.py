@@ -65,7 +65,10 @@ def add_bars(tokens):
     last_pos = 100
     tokens2 = []
     for token in tokens:
-        _, _, pos = token.split(".")
+        if '.' in token:
+            _, _, pos = token.split(".")
+        else:
+            continue
         if int(pos) < last_pos:
             tokens2.append(f"<bar>")
         tokens2.append(token)
@@ -188,6 +191,6 @@ def detokenize(
 
 if __name__ == '__main__':
     tokens = tokenize('MuseScoreMIDIS/chpn_op25_e12_format0.mid', cycle_length_beats=4, subdivisions_per_beat=4)
-    # save_tokens(tokens, 'tokens.txt', putbars=True)
-    """tokens = load_tokens('tokens.txt', exclude_bars=True)
-    detokenize(tokens, 'output.mid', tempo=120.0, cycle_length_beats=4, subdivisions_per_beat=4)"""
+    #save_tokens(tokens, 'tokens.txt', putbars=True)
+    #tokens = load_tokens('tokens.txt', exclude_bars=True)
+    #detokenize(tokens, 'output.mid', tempo=120.0, cycle_length_beats=4, subdivisions_per_beat=4)"""

@@ -3,18 +3,19 @@ import json
 from intomido.functions import *
 import matplotlib.pyplot as plt
 import joblib
-S = 1  # coprimo con 12
+S = 7  # coprimo con 12
 
 with open("datas/chorale1.json", 'r') as f:
     chorale1 = json.load(f)
 
 tipo = 'train'
-name = 'harmon'
+name = 'li_5th'
+
+
 
 def midi_to_s(X):
     X = np.where(X % 2 == 1, X - (S-1), X)
     return X
-
 
 def s_to_midi(X):
     X = np.where(X % 2 == 1, X + (S-1), X)
@@ -61,7 +62,7 @@ Y_rolled = Y_rolled.astype(np.uint8)
 plt.imshow(holed[0])
 plt.show()
 
-print(X_rolled.shape)
+print(X.shape)
 input('save >>>   ')
 
 datas = {

@@ -208,7 +208,7 @@ if __name__ == '__main__':
 
     print("\nLearned Merges:", bpe_processor.merges)
 
-    sequence_to_tokenize = ['15.64.76', '14.15.36', '14.6.3', '99.99.99', '15.64.76', 'unknown_token']
+    sequence_to_tokenize = ['15.100.76', '14.15.36', '14.6.3', '99.99.99', '15.64.76', 'unknown_token']
     tokenized_strings = bpe_processor.tokenize(sequence_to_tokenize)
     print(f"Tokenized (Strings): {tokenized_strings}")
     tokenized_vector = bpe_processor.tokenize_vector(sequence_to_tokenize)

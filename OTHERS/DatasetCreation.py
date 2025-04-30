@@ -1,7 +1,6 @@
 from intomido.encodings import StringBPE
-from GridTokenizer import tokenize, add_bars
+from GridTokenizer2 import tokenize, add_bars
 import os
-import GridTokenizer
 import joblib
 
 files = os.listdir("MuseScoreMIDIS2")
@@ -13,8 +12,8 @@ for file in files:
             io = tokenize(f'MuseScoreMIDIS2/{file}', cycle_length_beats=4, subdivisions_per_beat=8)
             io = add_bars(io)
             entokened.append(io)
-        except:
-            print(file)
+        except Exception as e:
+            print(file, e)
     """try:
         midis.append(file)
         midi = MidiFile(f"MuseScoreMIDIS/{file}")
@@ -29,7 +28,7 @@ print(sum([len(k) for k in entokened]))
 
 
 ENCODER = StringBPE()
-ENCODER.train(entokened, num_merges=500)
+ENCODER.train(entokened, num_merges=50)
 
 tokenized = []
 for file in files:
@@ -41,6 +40,6 @@ for file in files:
         except:
             print(file)
 
-joblib.dump(tokenized, "tokenized_test2.pkl")
-joblib.dump(ENCODER, "tokenizer_test2.pkl")
+joblib.dump(tokenized, "tokenized_test3.pkl")
+joblib.dump(ENCODER, "tokenizer_test3.pkl")
 

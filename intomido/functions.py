@@ -134,3 +134,31 @@ def np_imshow(X, index=0, channels=1, ncwh=True):
         if channels == 1:
             plt.imshow(X[index, :, :])
             plt.show()
+
+
+pm = pretty_midi
+def pm_swing(
+    pm,
+    cycle_length_beats: int = 9,
+    subdivisions_per_beat: int = 6):
+    inst = next((i for i in pm.instruments if not i.is_drum), None)
+    if inst is None:
+        raise ValueError("No non-drum instrument found in MIDI.")
+
+    beats = pm.get_beats()
+    events: list[tuple[float, str]] = []
+
+    for note in inst.notes:
+        idx = np.searchsorted(beats, note.start) - 1
+        idx = max(0, min(idx, len(beats) - 2))
+        dt = note.start - beats[idx]
+        beat_dur = beats[idx + 1] - beats[idx]
+        pos_beats = idx + dt / beat_dur
+
+        total_ticks = int(round(pos_beats * subdivisions_per_beat))
+        cycle_ticks = cycle_length_beats * subdivisions_per_beat
+        cyc_pos = total_ticks % cycle_ticks
+        print(cyc_pos)
+        if cyc_pos % 2 == 1 and note.velocity > 0:
+            note.start += 0.02
+            note.end   += 0.02
