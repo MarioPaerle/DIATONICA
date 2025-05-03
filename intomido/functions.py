@@ -162,3 +162,9 @@ def pm_swing(
         if cyc_pos % 2 == 1 and note.velocity > 0:
             note.start += 0.02
             note.end   += 0.02
+
+
+def nearest(value, candidates):
+    if not candidates:
+        raise ValueError("`candidates` must contain at least one value.")
+    return min(candidates, key=lambda x: abs(x - value))

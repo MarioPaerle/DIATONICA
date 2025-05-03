@@ -1,8 +1,8 @@
 import numpy as np
 import random as rd
-from functions import multi_hot_to_midi
+from functions import multi_hot_to_midi, nearest
 import matplotlib.pyplot as plt
-from OTHERS.DiscretePolynomialApproximators import polyntepolate
+from OTHERS.DiscretePolynomialApproximators import polyntepolate, melodic_interpolate
 
 import copy
 
@@ -134,20 +134,23 @@ class Pattern:
             if isinstance(note, int):
                 note += k
 
-
-
-
 class Chord(Group):
     def __init__(self, notes):
         """At creation of a Chord object the tonic is assumed to be the first note"""
         super().__init__(notes)
         self.tonic = notes[0]
+        self.separed_chords = [self.copy()]
 
     def _rivolt(self):
         self.notes = self.notes[1:].append(self.notes[0]+12)
 
     def get_bass(self, octave_down=1):
         return self.tonic + -12*octave_down
+
+    def __add__(self, other):
+        super().__add__(other)
+        self.separed_chords.append(other.copy())
+        return self
 
     def waltz(self):
         bass = self.get_bass(octave_down=1)
@@ -166,6 +169,15 @@ class Chord(Group):
         self.notes = k1 + k2
         self.notes.append(bass)
         return self
+
+    def get_pitches(self, idx, transpose=12):
+        return [n.note + transpose for n in self.separed_chords[idx].notes]
+
+    def __str__(self):
+        return f"Chord({self.notes})"
+
+    def __repr__(self):
+        return f"Chord({self.notes})"
 
 class Mask:
     def __init__(self, bars=16, barlen=16):
@@ -234,13 +246,13 @@ class Pianoroll:
         self.grid *= mask.mask
         return self
 
-    def add_list_pattern(self, pattern, subdivision=4, start=0, clamp_end=float('inf')):
+    def add_list_pattern(self, pattern, subdivision=4, start=0, clamp_end=float('inf'), transpose=0):
         """pattern must be like [67, 65, '-', ...]"""
         time = start
         last_note = None
         for pitch in pattern:
             if pitch not in ('_', '-'):
-                pitch += 24
+                pitch += transpose
                 note = Note(pitch, time, min(time+subdivision, clamp_end), 100)
             elif pitch == '-':
                 note = last_note
@@ -251,6 +263,8 @@ class Pianoroll:
             last_note = note
             self._add_note(note)
             time = min(time+subdivision, clamp_end)
+        return pattern
+
     def add_listed_pattern(self, p, start=0, clamp_end=float('inf')):
         """pattern must be like [67, 65, '-', ...]"""
         time = start
@@ -258,7 +272,7 @@ class Pianoroll:
         last_note = None
         for pitch in pattern:
             if pitch not in ('_', '-'):
-                pitch += 24
+                pitch += 0
                 note = Note(pitch, time, min(time+subdivision, clamp_end), 100)
             elif pitch == '-':
                 note = last_note
@@ -340,19 +354,36 @@ class Chords(metaclass=CopyArr):
 
 class Progressions(metaclass=CopyArr):
     moddy = (Chords.VImin + Chords.IImin + Chords.IIImin + Chords.VImin)
-    moddy2 = (Chords.VImin.waltz() + Chords.IImin.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(4)*2
+    moddy2 = (Chords.VImin.waltz() + Chords.IImin.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(4).transpose(-12)*2
     w1 = (Chords.VImin.waltz() + Chords.IIImaj.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(4)
 
+Progs = [Progressions.moddy2, Progressions.w1]
 if __name__ == "__main__":
     piano = Pianoroll(subdivision=16, bars=16)
     """mask = piano.get_blank_mask()
     mask.realtive_mask((0, 16, 32), mode='negative')
     piano.mask(mask)"""
-    prog = Progressions.moddy2
+    prog = rd.choice(Progs)
     piano._add_group(prog)
     piano.add_listed_pattern(
-        PATTERNS[f'5_to_6_{rd.randint(0, 5)}'], start=32*4, clamp_end=48*4
+        PATTERNS[f'5_to_6_{rd.randint(1, 5)}'], start=32*4, clamp_end=48*4
     )
+    pattern = piano.add_list_pattern(
+        melodic_interpolate(
+            [0, 8, 16],
+            [rd.choice(prog.get_pitches(0)), rd.choice(prog.get_pitches(0)), rd.choice(prog.get_pitches(1))],
+            24,
+            16,
+            scale=prog.get_pitches(0)),
+        subdivision=4
+    )
+    piano.add_list_pattern(
+        pattern,
+        subdivision=4,
+        transpose=2,
+        start=64
+    )
+    piano.add_note(81, 48*4, 64*4)
     piano.plot()
     piano.save_to("piano.mid")
 

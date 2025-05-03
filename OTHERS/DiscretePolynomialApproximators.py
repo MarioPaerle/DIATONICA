@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from intomido.functions import nearest
 
 
 points_y = [65, 65, 65, 57, 65]
@@ -26,7 +27,7 @@ def polyntepolate(x_points, y_points):
 
     return p
 
-def melodic_interpolate(x_points, y_points, lenght, steps, mask=None):
+def melodic_interpolate(x_points, y_points, lenght, steps, mask=None, scale=None):
     if mask is not None:
         assert len(mask) == lenght
     else:
@@ -34,6 +35,11 @@ def melodic_interpolate(x_points, y_points, lenght, steps, mask=None):
     approx = polyntepolate(x_points, y_points)
     X = np.linspace(0, lenght, steps)
     notes = [int(approx(x))*m for m, x in zip(mask, X)]
+    if scale is not None:
+        notes = [nearest(n, scale) for n in notes]
+    print(notes, y_points)
+    plt.plot(X, [approx(x) for x in X], 'o')
+    plt.show()
     return notes
 
 if __name__ == '__main__':
