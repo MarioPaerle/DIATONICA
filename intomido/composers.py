@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from OTHERS.DiscretePolynomialApproximators import polyntepolate, melodic_interpolate
 
 import copy
+import warnings
 
 class CopyArr(type):
     def __getattribute__(cls, name):
@@ -108,6 +109,14 @@ class Group:
     def add_pause(self, k):
         self.end_pause += k
 
+    def swing(self, swing_amount=1):
+        for note in self.notes:
+            if note.start % 8 != 0:
+                note.start += swing_amount
+                note.end += swing_amount
+
+        return self
+
     def __add__(self, other):
         self.join(other.move(self.duration() - other.start()))
         return self
@@ -149,29 +158,56 @@ class Chord(Group):
 
     def __add__(self, other):
         super().__add__(other)
-        self.separed_chords.append(other.copy())
+        if isinstance(other, Chord):
+            self.separed_chords.append(other.copy())
+        else:
+            warnings.warn("If you're trying to generate a multi chord progression, you should add a Chord not a Group!")
         return self
 
-    def waltz(self):
-        bass = self.get_bass(octave_down=1)
-        duration = self.duration()
-        k1 = [n.copy() for n in self.notes]
-        for k in k1:
-            k.multiply(1/3)
-            k.move(duration//3)
-            k.end -= duration//16
+    def waltz(self, endcut=3):
+        if len(self.separed_chords) == 1:
+            bass = self.get_bass(octave_down=1)
+            duration = self.duration()
+            k1 = [n.copy() for n in self.notes]
+            for k in k1:
+                k.multiply(1/3)
+                k.move(duration//3)
+                k.end -= duration//(4*endcut)
 
-        k2 = [n.copy() for n in self.notes]
-        for k in k2:
-            k.multiply(1/3)
-            k.move(2 * (duration//3))
+            k2 = [n.copy() for n in self.notes]
+            for k in k2:
+                k.multiply(1/3)
+                k.move(2 * (duration//3))
 
-        self.notes = k1 + k2
-        self.notes.append(bass)
-        return self
+            self.notes = k1 + k2
+            self.notes.append(bass)
+            return self
+        else:
+            for chord in self.separed_chords:
+                bass = chord.get_bass(octave_down=1)
+                duration = chord.duration()
+                k1 = [n.copy() for n in chord.notes]
+                for k in k1:
+                    k.multiply(1 / 3)
+                    k.move(duration // 3)
+                    k.end -= duration // (4 * endcut)
+
+                k2 = [n.copy() for n in chord.notes]
+                for k in k2:
+                    k.multiply(1 / 3)
+                    k.move(2 * (duration // 3))
+
+                chord.notes = k1 + k2
+                chord.notes.append(bass)
+            return self
 
     def get_pitches(self, idx, transpose=12):
         return [n.note + transpose for n in self.separed_chords[idx].notes]
+
+    def copy(self):
+        c = Chord(self.notes)
+        #c.separed_chords = self.separed_chords.copy()
+        return c
 
     def __str__(self):
         return f"Chord({self.notes})"
@@ -215,7 +251,7 @@ class Pianoroll:
         self.grid = np.zeros((128, self.bars*self.subdivision), dtype=np.uint8)
 
     def save_to(self, filename):
-        multi_hot_to_midi(self.grid.T, time_per_step=.5/16).write(filename)
+        multi_hot_to_midi(self.grid.T, time_per_step=.5/self.subdivision).write(filename)
 
     def _add_note(self, note: Note):
         self.added_notes.append(note)
@@ -231,6 +267,7 @@ class Pianoroll:
     def add_note(self, pitch, start, end, velocity=100):
         note = Note(pitch, start, end, velocity)
         self._add_note(note)
+
 
     def transpose(self, k):
         self.grid = np.roll(self.grid, k, axis=0)
@@ -355,14 +392,14 @@ class Chords(metaclass=CopyArr):
 class Progressions(metaclass=CopyArr):
     moddy = (Chords.VImin + Chords.IImin + Chords.IIImin + Chords.VImin)
     moddy2 = (Chords.VImin.waltz() + Chords.IImin.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(4).transpose(-12)*2
-    w1 = (Chords.VImin.waltz() + Chords.IIImaj.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(4)
+    w1 = (Chords.VImin.waltz() + Chords.IIImaj.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(4)*2
+    w2 = (Chords.VImin.waltz() + Chords.IImin.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(4)*2
+    w3 = (Chords.IImin.waltz() + Chords.VImin.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(3).swing(4)*2
 
-Progs = [Progressions.moddy2, Progressions.w1]
+Progs = [Progressions.w2, Progressions.w1, Progressions.w3]
 if __name__ == "__main__":
-    piano = Pianoroll(subdivision=16, bars=16)
-    """mask = piano.get_blank_mask()
-    mask.realtive_mask((0, 16, 32), mode='negative')
-    piano.mask(mask)"""
+    """This demo generates a basic Waltzer"""
+    piano = Pianoroll(subdivision=16, bars=32)
     prog = rd.choice(Progs)
     piano._add_group(prog)
     piano.add_listed_pattern(
@@ -383,7 +420,30 @@ if __name__ == "__main__":
         transpose=2,
         start=64
     )
+    piano.add_list_pattern(
+        pattern,
+        subdivision=4,
+        transpose=0,
+        start=64*4
+    )
+    piano.add_list_pattern(
+        pattern,
+        subdivision=4,
+        transpose=2,
+        start=64*5
+    )
+    pattern = piano.add_list_pattern(
+        melodic_interpolate(
+            [0, 16, 32, 64],
+            [rd.choice(prog.get_pitches(2)), rd.choice(prog.get_pitches(2)), rd.choice(prog.get_pitches(3)), rd.choice(prog.get_pitches(3))],
+            128,
+            64,
+            scale=prog.get_pitches(3)),
+        start=64*6,
+        subdivision=4
+    )
+
+
     piano.add_note(81, 48*4, 64*4)
     piano.plot()
     piano.save_to("piano.mid")
-

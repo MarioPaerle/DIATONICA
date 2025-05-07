@@ -37,7 +37,6 @@ def melodic_interpolate(x_points, y_points, lenght, steps, mask=None, scale=None
     notes = [int(approx(x))*m for m, x in zip(mask, X)]
     if scale is not None:
         notes = [nearest(n, scale) for n in notes]
-    print(notes, y_points)
     plt.plot(X, [approx(x) for x in X], 'o')
     plt.show()
     return notes
