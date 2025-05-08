@@ -1,7 +1,7 @@
 import numpy as np
 import random as rd
 
-from functions import multi_hot_to_midi, nearest, nearest_numpy
+from functions import multi_hot_to_midi, nearest, cast_pianoroll_to_scale
 import matplotlib.pyplot as plt
 from OTHERS.DiscretePolynomialApproximators import polyntepolate, melodic_interpolate
 
@@ -133,6 +133,9 @@ class Group:
     def __str__(self):
         return f"Group({self.notes})"
 
+    def __len__(self):
+        return len(self.notes)
+
 class Pattern:
     def __init__(self, notes, start, subdivision):
         self.pattern = notes
@@ -164,9 +167,9 @@ class Chord(Group):
         super().__add__(other)
         if isinstance(other, Chord):
             if len(self.get_separed_chords()) == 0:
-                print('asdasdasd')
                 self.separed_chords.append(self.copy())
-            self.separed_chords.append(other.copy())
+            else:
+                self.separed_chords.append(other.copy())
         else:
             warnings.warn("If you're trying to generate a multi chord progression, you should add a Chord not a Group!")
         return self
@@ -222,6 +225,7 @@ class ChordsProgression:
     def __init__(self, chords: list[Chord]):
         assert type(all([type(c) == Chord for c in chords]))
         self.chords = chords
+        print(self.chords)
 
     def transpose(self, k):
         for chord in self.chords:
@@ -229,9 +233,7 @@ class ChordsProgression:
 
     def waltz(self, e=3):
         for chord in self.chords:
-            print(chord)
             chord.waltz(e)
-            print(chord)
         return self
 
     def to_chord(self):
@@ -358,10 +360,9 @@ class Pianoroll:
 
     def cast_to(self, scale, indicies=None):
         if indicies is None:
-            self.grid = nearest_numpy(self.grid, scale)
+            self.grid = cast_pianoroll_to_scale(self.grid.T, scale).T
         else:
-            self.grid[indicies] = nearest_numpy(self.grid[indicies], scale)
-
+            self.grid[indicies] = cast_pianoroll_to_scale(self.grid[indicies].T, scale).T
 
 def chord(pitches, start, end):
     """Tonic must be the first pitch"""

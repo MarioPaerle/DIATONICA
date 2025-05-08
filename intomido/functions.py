@@ -184,3 +184,67 @@ def nearest_numpy(value: np.ndarray, candidates):
     nearest_values = candidates[nearest_candidate_indices]
 
     return nearest_values
+
+
+def cast_pianoroll_to_scale(pianoroll: np.ndarray, scale_notes):
+    """
+    Casts each active note in a pianoroll to the nearest note in a given scale.
+
+    Args:
+        pianoroll: A 2D NumPy array representing a pianoroll (time_steps, 128).
+                   Values are velocities.
+        scale_notes: A list or NumPy array of MIDI note numbers representing the
+                     scale. Must not be empty.
+
+    Returns:
+        A new NumPy array representing the modified pianoroll, where velocities
+        have been moved to the nearest scale notes. The shape and dtype are
+        the same as the input pianoroll.
+
+    Raises:
+        ValueError: If `scale_notes` is empty or if the pianoroll shape is
+                    unexpected (e.g., not 2D or second dim not 128).
+    """
+    if not scale_notes:
+        raise ValueError("`scale_notes` must contain at least one value.")
+
+    scale_notes = np.asarray(scale_notes, dtype=int)
+
+    if pianoroll.ndim != 2:
+        raise ValueError("Pianoroll must be a 2D array.")
+
+    num_time_steps, num_notes = pianoroll.shape
+    if num_notes != 128:
+        print(f"Warning: Pianoroll second dimension is {num_notes}, expected 128.")
+
+    output_pianoroll = np.zeros_like(pianoroll)
+
+    if np.issubdtype(pianoroll.dtype, np.integer):
+        max_velocity = 127
+    else:  # Assuming float
+        max_velocity = 1.0
+
+    all_possible_notes = np.arange(128)
+    abs_diffs = np.abs(scale_notes[:, np.newaxis] - all_possible_notes)
+    nearest_scale_note_indices = np.argmin(abs_diffs, axis=0)
+    mapping_to_nearest_scale_note = scale_notes[nearest_scale_note_indices]
+
+    # Now process each time step
+    for t in range(num_time_steps):
+        pianoroll_slice = pianoroll[t, :]
+
+        active_note_indices = np.where(pianoroll_slice > 0)[0]
+
+        if active_note_indices.size == 0:
+            continue
+
+        active_velocities = pianoroll_slice[active_note_indices]
+
+        # Find the target scale note for each active original note using the pre-calculated mapping
+        target_scale_notes_for_active = mapping_to_nearest_scale_note[active_note_indices]
+        output_slice = output_pianoroll[t, :]  # Get the slice to modify in place
+        np.add.at(output_slice, target_scale_notes_for_active, active_velocities)
+
+        np.clip(output_slice, 0, max_velocity, out=output_slice)
+
+    return output_pianoroll
