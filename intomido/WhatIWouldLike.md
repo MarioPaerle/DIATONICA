@@ -14,6 +14,7 @@ melody = generate_melody(progression, t=t, ...)
 - Same thing could be done for melodies for what regardas velocities, which with jazz can be just casted as a random signal for example
 - Another example could be filters in electronic music, but also expression, vibrato tremolo ecc.
 - We don't need AI for this, most of this things could be programmed as oscillatory signals + random noise.
+- I COULD CAST TO SCALE THE DICRETE DIFF GENERATIONS!
 
 
 

@@ -169,3 +169,18 @@ def nearest(value, candidates):
     if not candidates:
         raise ValueError("`candidates` must contain at least one value.")
     return min(candidates, key=lambda x: abs(x - value))
+
+
+def nearest_numpy(value: np.ndarray, candidates):
+    if not candidates:
+        raise ValueError("`candidates` must contain at least one value.")
+
+    candidates = np.asarray(candidates)
+
+    abs_diffs = np.abs(value[:, :, None] - candidates[None, None, :])
+
+    nearest_candidate_indices = np.argmin(abs_diffs, axis=2)
+
+    nearest_values = candidates[nearest_candidate_indices]
+
+    return nearest_values
