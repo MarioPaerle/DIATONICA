@@ -1,5 +1,8 @@
 import numpy as np
 import random as rd
+
+from h5py import check_ref_dtype
+
 from functions import multi_hot_to_midi, nearest
 import matplotlib.pyplot as plt
 from OTHERS.DiscretePolynomialApproximators import polyntepolate, melodic_interpolate
@@ -53,7 +56,7 @@ class Note:
         return self
 
     def __repr__(self):
-        return f"Note({self.note}, s:{self.start}, e:{self.end},v: {self.velocity}, N:{self.notation})"
+        return f"Note({self.note}, s:{self.start}, e:{self.end})"
 
     def __str__(self):
         return f"Note({self.note}, s:{self.start}, e:{self.end},v: {self.velocity}, N:{self.notation})"
@@ -148,7 +151,10 @@ class Chord(Group):
         """At creation of a Chord object the tonic is assumed to be the first note"""
         super().__init__(notes)
         self.tonic = notes[0]
-        self.separed_chords = [self.copy()]
+        self.separed_chords = []
+
+    def get_separed_chords(self):
+        return self.separed_chords
 
     def _rivolt(self):
         self.notes = self.notes[1:].append(self.notes[0]+12)
@@ -159,13 +165,21 @@ class Chord(Group):
     def __add__(self, other):
         super().__add__(other)
         if isinstance(other, Chord):
+            if len(self.get_separed_chords()) == 0 and False:
+                self.separed_chords.append(self.copy())
             self.separed_chords.append(other.copy())
         else:
             warnings.warn("If you're trying to generate a multi chord progression, you should add a Chord not a Group!")
         return self
 
     def waltz(self, endcut=3):
-        if len(self.separed_chords) == 1:
+        # TODO: Waltzer fixes, the chord does not waltz correctly!
+        if self.start() != 0:
+            pass
+            #raise Exception("Chord.waltz() is not implemented for chords that start differently from 0")
+        if len(self.get_separed_chords()) == 0:
+            rstart = 0 # self.start()
+            _ = self.move(-rstart)
             bass = self.get_bass(octave_down=1)
             duration = self.duration()
             k1 = [n.copy() for n in self.notes]
@@ -181,32 +195,19 @@ class Chord(Group):
 
             self.notes = k1 + k2
             self.notes.append(bass)
+            self.move(rstart)
             return self
         else:
-            for chord in self.separed_chords:
-                bass = chord.get_bass(octave_down=1)
-                duration = chord.duration()
-                k1 = [n.copy() for n in chord.notes]
-                for k in k1:
-                    k.multiply(1 / 3)
-                    k.move(duration // 3)
-                    k.end -= duration // (4 * endcut)
+            raise Exception("you're probably trying to waltz a Chord object with more than a group! use .to_chord_progression().waltz() instead")
 
-                k2 = [n.copy() for n in chord.notes]
-                for k in k2:
-                    k.multiply(1 / 3)
-                    k.move(2 * (duration // 3))
-
-                chord.notes = k1 + k2
-                chord.notes.append(bass)
-            return self
 
     def get_pitches(self, idx, transpose=12):
         return [n.note + transpose for n in self.separed_chords[idx].notes]
 
     def copy(self):
-        c = Chord(self.notes)
-        #c.separed_chords = self.separed_chords.copy()
+        group = super().copy()
+        c = Chord(group.notes)
+        c.separed_chords = self.separed_chords.copy()
         return c
 
     def __str__(self):
@@ -214,6 +215,37 @@ class Chord(Group):
 
     def __repr__(self):
         return f"Chord({self.notes})"
+
+    def to_chord_progression(self):
+        return ChordsProgression(self.separed_chords)
+
+class ChordsProgression:
+    def __init__(self, chords: list[Chord]):
+        assert type(all([type(c) == Chord for c in chords]))
+        self.chords = chords
+
+    def transpose(self, k):
+        for chord in self.chords:
+            chord.transpose(k)
+
+    def waltz(self, e=3):
+        for chord in self.chords:
+            print(chord)
+            chord.waltz(e)
+            print(chord)
+        return self
+
+    def to_chord(self):
+        chord_ = self.chords[0]
+        for chord in self.chords[1:]:
+            chord_ += chord
+        return chord_
+
+    def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            return ChordsProgression(self.chords[idx])
+        else:
+            return self.chords[idx]
 
 class Mask:
     def __init__(self, bars=16, barlen=16):
@@ -303,7 +335,8 @@ class Pianoroll:
         return pattern
 
     def add_listed_pattern(self, p, start=0, clamp_end=float('inf')):
-        """pattern must be like [67, 65, '-', ...]"""
+        """pattern must be like [67, 65, '-', ...]
+        Differences with add_list_pattern is that here the subdivision is also passed in the p"""
         time = start
         pattern, subdivision = p
         last_note = None
@@ -321,6 +354,8 @@ class Pianoroll:
             self._add_note(note)
             time = min(time+subdivision, clamp_end)
 
+    def add_rythmic_pattern_list(self, pattern_velocities_list: list, note=72):
+        self.grid[note, :] = np.array(pattern_velocities_list, dtype=np.uint8)
 
 def chord(pitches, start, end):
     """Tonic must be the first pitch"""
@@ -330,6 +365,7 @@ def chord(pitches, start, end):
 def easychord(tonic, mod, start, end):
     notes = [Note(tonic, start*16, end*16) + k for k in MOD[mod]]
     return Chord(notes)
+
 
 MOD = {
     'maj': [0, 4, 7],
@@ -349,6 +385,7 @@ PATTERNS = {
     '5_to_6_4': (['_', '_', '_', '_', '_', 88, 84, 83], 8),
     '5_to_6_5': ([76, '_', '_', '_', '_', 76, 78, 80], 8),
 }
+
 class Notes(metaclass=CopyArr):
     C =  Note(60, 0, 1, 100)
     Db = Note(61, 0, 1, 100)
@@ -396,8 +433,9 @@ class Progressions(metaclass=CopyArr):
     w2 = (Chords.VImin.waltz() + Chords.IImin.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(4)*2
     w3 = (Chords.IImin.waltz() + Chords.VImin.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(3).swing(4)*2
 
-Progs = [Progressions.w2, Progressions.w1, Progressions.w3]
+
 if __name__ == "__main__":
+    Progs = [Progressions.w2, Progressions.w1, Progressions.w3]
     """This demo generates a basic Waltzer"""
     piano = Pianoroll(subdivision=16, bars=32)
     prog = rd.choice(Progs)
