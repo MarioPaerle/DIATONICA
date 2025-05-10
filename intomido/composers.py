@@ -118,6 +118,9 @@ class Group:
 
         return self
 
+    def notes_values(self):
+        return [n.note for n in self.notes]
+
     def __add__(self, other):
         self.join(other.move(self.duration() - other.start()))
         return self
@@ -276,6 +279,58 @@ class Mask:
         plt.imshow(self.mask)
         plt.show()
 
+class NoteList:
+    """A NoteList holds all octave-equivalents of given root pitches in the MIDI range 0–128."""
+
+    def __init__(self, roots: list[int]):
+        self.roots = roots
+        self.notes = self._generate_notes()
+
+    def _generate_notes(self) -> list[int]:
+        """Generate all notes for each root by adding multiples of 12 (octaves)
+        so long as the resulting MIDI value is between 0 and 128 inclusive."""
+        notes = set()
+        for root in self.roots:
+            octave = -((root) // 12)
+            while True:
+                pitch = root + octave * 12
+                if pitch > 128:
+                    break
+                if 0 <= pitch <= 128:
+                    notes.add(pitch)
+                octave += 1
+        return sorted(notes)
+
+    def __add__(self, semitones: int) -> "NoteList":
+        """Return a new NoteList with all notes shifted up by `semitones`."""
+        shifted = NoteList(self.roots)
+        shifted.notes = [n + semitones for n in self.notes]
+        return shifted
+
+    def __sub__(self, semitones: int) -> "NoteList":
+        """Return a new NoteList with all notes shifted down by `semitones`."""
+        return self + (-semitones)
+
+    def __getitem__(self, idx):
+        """Allow indexing directly into the generated notes."""
+        return self.notes[idx]
+
+    def __len__(self):
+        """Number of notes in the list."""
+        return len(self.notes)
+
+    def list(self) -> list[int]:
+        """Get the underlying list of MIDI note numbers."""
+        return self.notes.copy()
+
+    def __repr__(self):
+        return f"NoteList({self.roots})"
+
+    def __str__(self):
+        return f"NoteList({self.roots}):: {self.notes}"
+
+
+
 class Pianoroll:
     def __init__(self, bars=16, subdivision=16):
         self.added_notes = []
@@ -362,7 +417,7 @@ class Pianoroll:
         if indicies is None:
             self.grid = cast_pianoroll_to_scale(self.grid.T, scale).T
         else:
-            self.grid[indicies] = cast_pianoroll_to_scale(self.grid[indicies].T, scale).T
+            self.grid[:, indicies] = cast_pianoroll_to_scale(self.grid[:, indicies].T, scale).T
 
 def chord(pitches, start, end):
     """Tonic must be the first pitch"""
@@ -442,6 +497,7 @@ class Progressions(metaclass=CopyArr):
 
 class Scales:
     Cmajor = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95, 96, 98, 100, 101, 103, 105, 107, 108, 110, 112, 113, 115, 117, 119, 120, 122, 124, 125, 127]
+    Cmajor
 
 if __name__ == "__main__":
     Progs = [Progressions.w2, Progressions.w1, Progressions.w3]
