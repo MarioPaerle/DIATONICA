@@ -187,7 +187,27 @@ def detokenize(
     pm.instruments.append(piano)
     pm.write(output_path)
 
+def transpose(tokens, k=0):
+    retokens = []
+    for token in tokens:
+        if 'timesig' in token or 'bar' in token:
+            retokens.append(token)
+        else:
+            pitch = int(token.split('.')[0]) + k
+            retoken = f"{pitch}.{".".join(token.split('.')[1:])}"
+            retokens.append(retoken)
+    return retokens
 
+def calm(tokens, k=0):
+    retokens = []
+    for token in tokens:
+        if 'timesig' in token or 'bar' in token:
+            retokens.append(token)
+        else:
+            pitch = int(token.split('.')[0]) + k
+            retoken = f"{pitch}.{".".join(token.split('.')[1:])}"
+            retokens.append(retoken)
+    return retokens
 
 if __name__ == '__main__':
     tokens = tokenize('MuseScoreMIDIS/chpn_op25_e12_format0.mid', cycle_length_beats=4, subdivisions_per_beat=4)

@@ -184,7 +184,9 @@ class StringBPE:
         if unknown_id is None:
              # This should not happen if _build_mappings worked correctly
              raise RuntimeError(f"Unknown token '{self.unknown_token}' not found in vocabulary mapping.")
-
+        for token in tokenized_sequence:
+            if token not in self.token_to_id:
+                print(token)
         return [self.token_to_id.get(token, unknown_id) for token in tokenized_sequence]
 
     def detokenize(self, vector: List[int]) -> List[str]:
