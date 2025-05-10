@@ -104,6 +104,7 @@ def multi_hot_to_midi(piano_roll: np.ndarray, time_per_step: float = 0.2,
             # Note-off: the note was active in the previous step but is now off.
             elif not is_active and prev_active:
                 start_time = active_notes.pop(pitch, current_time)
+                velocity = piano_roll[t - 1][pitch].item()
                 note = pretty_midi.Note(velocity=velocity, pitch=pitch, start=start_time, end=current_time)
                 instrument.notes.append(note)
 

@@ -329,8 +329,6 @@ class NoteList:
     def __str__(self):
         return f"NoteList({self.roots}):: {self.notes}"
 
-
-
 class Pianoroll:
     def __init__(self, bars=16, subdivision=16):
         self.added_notes = []
@@ -355,7 +353,6 @@ class Pianoroll:
     def add_note(self, pitch, start, end, velocity=100):
         note = Note(pitch, start, end, velocity)
         self._add_note(note)
-
 
     def transpose(self, k):
         self.grid = np.roll(self.grid, k, axis=0)
@@ -411,7 +408,7 @@ class Pianoroll:
             time = min(time+subdivision, clamp_end)
 
     def add_rythmic_pattern_list(self, pattern_velocities_list: list, note=72):
-        self.grid[note, :] = np.array(pattern_velocities_list, dtype=np.uint8)
+        self.grid[note, :] += np.array(pattern_velocities_list, dtype=np.uint8)
 
     def cast_to(self, scale, indicies=None):
         if indicies is None:
