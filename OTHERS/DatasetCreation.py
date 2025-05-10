@@ -15,32 +15,21 @@ if True:
                 for i in range(0, 13):
                     io_scaled = transpose(io, i)
                     entokened.append(io_scaled)
-                # entokened.append(io)
             except Exception as e:
                 print(file, e)
-        """try:
-            midis.append(file)
-            midi = MidiFile(f"MuseScoreMIDIS/{file}")
-            tok = EasyTok(midi)
-            tok.tokenize(transpose=False)
-            for token in tok.tolist():
-                entokened.append(token)
-        except:
-            print(f"Error with {file}")"""
 
     print(sum([len(k) for k in entokened]))
 
 
 ENCODER = StringBPE()
-ENCODER.train(entokened, num_merges=2)
+ENCODER.train(entokened, num_merges=100)
 
-
-# ENCODER = joblib.load('tokenizer_test5.pkl')
 print(len(ENCODER.vocab))
 print(max(ENCODER.token_to_id.values()))
 print(min(ENCODER.token_to_id.values()))
 print(ENCODER.token_to_id)
 input()
+
 tokenized = []
 for file in files:
     if file.endswith(".mid"):
@@ -54,6 +43,6 @@ for file in files:
         except Exception as e:
             print(file, e)
 
-joblib.dump(tokenized, "tokenized_test6.pkl")
-joblib.dump(ENCODER, "tokenizer_test6.pkl")
+joblib.dump(tokenized, "tokenized_test7.pkl")
+joblib.dump(ENCODER, "tokenizer_test7.pkl")
 

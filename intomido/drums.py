@@ -13,7 +13,7 @@ class PercussionPattern:
             raise ValueError("Not enough velocity levels for the specified mods")
         for i in range(len(self.pattern)):
             for mod in mods:
-
+                pass
     def __mul__(self, other):
         self.pattern.extend(other.pattern)
         return self

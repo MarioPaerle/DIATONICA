@@ -18,6 +18,7 @@ def tokenize(
     Returns:
         A list of tokens sorted by ascending start time, with an initial timesig token.
     """
+
     pm = pretty_midi.PrettyMIDI(midi_path)
     # extract first time signature change, default to 4/4
     if pm.time_signature_changes:
@@ -209,8 +210,76 @@ def calm(tokens, k=0):
             retokens.append(retoken)
     return retokens
 
+import pypianoroll
+import numpy as np
+import os
+
+def midi_to_segmented_pianorolls(midi_path: str, k: int, shift=0, mlt=1) -> list[np.ndarray]:
+    if not isinstance(k, int) or k <= 0:
+        print("Error: Segment length k must be a positive integer.")
+        return []
+
+    if not os.path.exists(midi_path):
+        print(f"Error: MIDI file not found at {midi_path}")
+        return []
+
+    try:
+        multitrack = pypianoroll.read(midi_path)
+    except Exception as e:
+        print(f"Error loading MIDI file '{midi_path}': {e}")
+        return []
+
+    if not multitrack.tracks:
+        print(f"No tracks found in MIDI file: {midi_path}")
+        return []
+
+    piano_track = multitrack.tracks[0]
+
+    if piano_track.is_drum:
+        print(f"Warning: The first track in '{midi_path}' is a drum track. "
+              "Processing it as if it were a piano track.")
+
+    original_pianoroll_shape = piano_track.pianoroll.shape
+
+    if original_pianoroll_shape[0] == 0:
+        print(f"The assumed piano track in '{midi_path}' is empty (contains no notes).")
+        return []
+
+    piano_track.pad_to_multiple(k)
+    padded_pianoroll = piano_track.pianoroll
+
+    num_timesteps = padded_pianoroll.shape[0]
+    if num_timesteps == 0 : # Should have been caught by original_pianoroll_shape[0] == 0 check
+         print(f"Info: Piano track became empty after padding attempt for '{midi_path}'. Original shape was {original_pianoroll_shape}")
+         return []
+
+
+    if num_timesteps % k != 0:
+        print(f"Internal Warning: Padded pianoroll length ({num_timesteps}) for '{midi_path}' "
+              f"is not a multiple of k ({k}). Original length was {original_pianoroll_shape[0]}. "
+              "This might indicate an issue with the padding logic or an edge case.")
+
+    num_segments = num_timesteps // k
+    segments = []
+
+    if num_segments == 0:
+        if num_timesteps > 0:
+             print(f"Info: Pianoroll for '{midi_path}' (length {num_timesteps}) is shorter than segment length k={k} "
+                   "even after padding, resulting in 0 full segments by floor division. "
+                   "This is unexpected if padding to k occurred correctly.")
+        return []
+
+
+    for i in range(num_segments):
+        segment = padded_pianoroll[i * k : (i + 1) * k, :]
+        segments.append(np.roll(segment.T, shift, axis=0))
+
+    return np.array(segments)
+
 if __name__ == '__main__':
-    tokens = tokenize('MuseScoreMIDIS/chpn_op25_e12_format0.mid', cycle_length_beats=4, subdivisions_per_beat=4)
-    #save_tokens(tokens, 'tokens.txt', putbars=True)
-    #tokens = load_tokens('tokens.txt', exclude_bars=True)
-    #detokenize(tokens, 'output.mid', tempo=120.0, cycle_length_beats=4, subdivisions_per_beat=4)"""
+    segments = midi_to_segmented_pianorolls("MuseScoreMIDIS2/deb_menu.mid", 128)
+    print(segments.shape)
+    import matplotlib.pyplot as plt
+    plt.imshow(segments[0])
+    plt.show()
+
