@@ -3,7 +3,7 @@ import numpy as np
 
 from composers import *
 
-generated = joblib.load("sample2.pkl").numpy().astype(np.float16)
+generated = joblib.load("sample4.pkl").numpy().astype(np.float16)
 generated = np.round(generated).astype(np.uint8)
 piano = Pianoroll(16, 8)
 print(piano.grid.shape)

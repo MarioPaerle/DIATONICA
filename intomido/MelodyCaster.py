@@ -1,0 +1,87 @@
+import random as rd
+import numpy as np
+from composers import *
+from intomido.functions import midi_to_numpy
+
+"""midi = midi_to_numpy("3foturhSportswear44.mid").astype(np.uint8)
+midi = midi[:, 0::3]"""
+"""plt.imshow(midi)
+plt.show()"""
+
+"""progression = Progressions.op64n2.multiply(3).transpose(-24)
+piano = Pianoroll(subdivision=16, bars=32)
+
+I = NoteList(Chords.VImin.notes_values())
+II = NoteList(Chords.IIImaj.notes_values()).add_note(69).add_note(65)
+III = NoteList(Chords.IIImaj.notes_values()).add_note(69).add_note(65)
+IV = NoteList(Chords.VImin.notes_values())
+
+piano._add_group(progression)
+piano.add_list_pattern([64, '-', 69, 72, 65], subdivision=12)
+piano.add_list_pattern([65, '-', 72, 69, 64], subdivision=12, start=16*6)
+
+
+piano.cast_to(I, indicies=slice(0, 48))
+piano.cast_to(II, indicies=slice(48, 48*2))
+piano.cast_to(III, indicies=slice(48*2, 48*3))
+piano.cast_to(IV, indicies=slice(48*3, 48*4))
+
+piano.add_list_pattern([64, '-', 69, 72, 65], subdivision=12, start=48*4)
+
+pattern = piano.add_list_pattern(
+        melodic_interpolate(
+            [0, 8, 16],
+            [rd.choice(progression.get_pitches(1)), rd.choice(progression.get_pitches(1)), rd.choice(progression.get_pitches(2))],
+            24,
+            16,
+            scale=progression.get_pitches(0)),
+        subdivision=6,
+    start=48*6
+    )
+
+piano.cast_to(I, indicies=slice(48*4, 48*5))
+piano.cast_to(II, indicies=slice(48*6, 48*7))
+piano.cast_to(III, indicies=slice(48*8, 48*9))
+piano.cast_to(IV, indicies=slice(48*9, 48*10))
+
+piano.save_to('output.mid')
+piano.plot()"""
+
+progression = Progressions.op64n2.multiply(3).transpose(-24)
+piano = Pianoroll(subdivision=16, bars=64)
+
+I = NoteList(Chords.VImin.notes_values())
+II = NoteList(Chords.IIImaj.notes_values()).add_note(69).add_note(65)
+III = NoteList(Chords.IIImaj.notes_values()).add_note(69).add_note(65)
+IV = NoteList(Chords.VImin.notes_values())
+
+piano._add_group(progression)
+piano.add_list_pattern([76, '-', 76, 72, '-', '-', 71, '-', '-', 71, 72, '-', '-', 64], subdivision=6)
+piano.add_list_pattern([76, '-', 76, 72, '-', '-', 71, '-', '-', 71, 72, '-', '-', 64], subdivision=6, start=16*6)
+
+
+piano.cast_to(I, indicies=slice(0, 48))
+piano.cast_to(II, indicies=slice(48, 48*2))
+piano.cast_to(III, indicies=slice(48*2, 48*3))
+piano.cast_to(IV, indicies=slice(48*3, 48*4))
+
+piano.add_list_pattern([76, '-', 76, 72, '-', '-', 71, '-', '-', 71, 72, '-', '-', 64], subdivision=6, start=16*12)
+
+pattern = piano.add_list_pattern(
+        melodic_interpolate(
+            [0, 8, 16],
+            [rd.choice(progression.get_pitches(1)), rd.choice(progression.get_pitches(1)), rd.choice(progression.get_pitches(2))],
+            24,
+            16,
+            scale=progression.get_pitches(0)),
+        subdivision=6,
+    start=48*6
+    )
+
+piano.cast_to(I, indicies=slice(48*4, 48*5))
+piano.cast_to(II, indicies=slice(48*6, 48*7))
+piano.cast_to(III, indicies=slice(48*8, 48*9))
+piano.cast_to(IV, indicies=slice(48*9, 48*10))
+
+piano.save_to('output_turndownforwhat.mid')
+piano.plot()

@@ -164,7 +164,7 @@ class Chord(Group):
         self.notes = self.notes[1:].append(self.notes[0]+12)
 
     def get_bass(self, octave_down=1):
-        return self.tonic + -12*octave_down
+        return self.tonic.copy() + -12*octave_down
 
     def __add__(self, other):
         super().__add__(other)
@@ -177,7 +177,7 @@ class Chord(Group):
             warnings.warn("If you're trying to generate a multi chord progression, you should add a Chord not a Group!")
         return self
 
-    def waltz(self, endcut=3):
+    def waltz(self, endcut=3, bassadd=0):
         # TODO: Waltzer fixes, the chord does not waltz correctly!
         if self.start() != 0:
             pass
@@ -185,18 +185,19 @@ class Chord(Group):
         if len(self.get_separed_chords()) == 0:
             rstart = 0 # self.start()
             _ = self.move(-rstart)
-            bass = self.get_bass(octave_down=1)
+            bass = self.get_bass(octave_down=1) + bassadd
             duration = self.duration()
             k1 = [n.copy() for n in self.notes]
             for k in k1:
                 k.multiply(1/3)
                 k.move(duration//3)
                 k.end -= duration//(4*endcut)
+                k.start += 0.5
 
             k2 = [n.copy() for n in self.notes]
             for k in k2:
                 k.multiply(1/3)
-                k.move(2 * (duration//3))
+                k.move(2 * (duration//3) + 0.5)
 
             self.notes = k1 + k2
             self.notes.append(bass)
@@ -204,7 +205,6 @@ class Chord(Group):
             return self
         else:
             raise Exception("you're probably trying to waltz a Chord object with more than a group! use .to_chord_progression().waltz() instead")
-
 
     def get_pitches(self, idx, transpose=12):
         return [n.note + transpose for n in self.separed_chords[idx].notes]
@@ -300,6 +300,10 @@ class NoteList:
                     notes.add(pitch)
                 octave += 1
         return sorted(notes)
+
+    def add_note(self, pitch):
+        self.notes.append(pitch)
+        return self
 
     def __add__(self, semitones: int) -> "NoteList":
         """Return a new NoteList with all notes shifted up by `semitones`."""
@@ -429,12 +433,15 @@ def easychord(tonic, mod, start, end):
 MOD = {
     'maj': [0, 4, 7],
     'min': [0, 3, 7],
+    'minj1': [0, 2, 3, 7],
+    'minj2': [2, 3, 7],
     'maj7': [0, 4, 7, 10],
     'maj7+': [0, 4, 7, 11],
     'min7': [0, 3, 7, 10],
     'min7+': [0, 3, 7, 11],
     'sus1': [0, 2, 7],
     'sus2': [0, 5, 7],
+    'nap': [0, 3, 8]
 }
 
 PATTERNS = {
@@ -485,23 +492,30 @@ class Chords(metaclass=CopyArr):
     VIImaj =  easychord(tonic=Notes.B.note, mod='maj', start=0, end=1)
     VIImin =  easychord(tonic=Notes.B.note, mod='min', start=0, end=1)
 
+    Napulitan = easychord(tonic=Notes.B.note, mod='min', start=0, end=1)
 class Progressions(metaclass=CopyArr):
     moddy = (Chords.VImin + Chords.IImin + Chords.IIImin + Chords.VImin)
     moddy2 = (Chords.VImin.waltz() + Chords.IImin.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(4).transpose(-12)*2
     w1 = (Chords.VImin.waltz() + Chords.IIImaj.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(4)*2
     w2 = (Chords.VImin.waltz() + Chords.IImin.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(4)*2
-    w3 = (Chords.IImin.waltz() + Chords.VImin.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(3).swing(4)*2
+    w3 = (Chords.IImin.waltz() + Chords.VImin.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz()).multiply(3)*2
 
+    # Real Waltzers
+    op64n2_a = (Chords.VImin.waltz() + Chords.IIImaj.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz())# .multiply(3)
+    op64n2_b = (Chords.IVmaj.waltz() + Chords.IVmaj.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz())# .multiply(3)
+    op64n2 = op64n2_a.copy() + op64n2_b.copy()
 class Scales:
     Cmajor = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95, 96, 98, 100, 101, 103, 105, 107, 108, 110, 112, 113, 115, 117, 119, 120, 122, 124, 125, 127]
     Cmajor
 
 if __name__ == "__main__":
-    Progs = [Progressions.w2, Progressions.w1, Progressions.w3]
+    Progs = [Progressions.op64n2]
     """This demo generates a basic Waltzer"""
-    piano = Pianoroll(subdivision=16, bars=32)
+    piano = Pianoroll(subdivision=12, bars=32)
     prog = rd.choice(Progs)
     piano._add_group(prog)
+    piano.save_to('output.mid')
+    quit()
     piano.add_listed_pattern(
         PATTERNS[f'5_to_6_{rd.randint(1, 5)}'], start=32*4, clamp_end=48*4
     )

@@ -214,7 +214,7 @@ import pypianoroll
 import numpy as np
 import os
 
-def midi_to_segmented_pianorolls(midi_path: str, k: int, shift=0, mlt=1) -> list[np.ndarray]:
+def midi_to_segmented_pianorolls(midi_path: str, k: int, shift=0, div=1) -> list[np.ndarray]:
     if not isinstance(k, int) or k <= 0:
         print("Error: Segment length k must be a positive integer.")
         return []
@@ -246,18 +246,13 @@ def midi_to_segmented_pianorolls(midi_path: str, k: int, shift=0, mlt=1) -> list
         return []
 
     piano_track.pad_to_multiple(k)
-    padded_pianoroll = piano_track.pianoroll
+    padded_pianoroll = piano_track.pianoroll[0::div]
 
     num_timesteps = padded_pianoroll.shape[0]
     if num_timesteps == 0 : # Should have been caught by original_pianoroll_shape[0] == 0 check
          print(f"Info: Piano track became empty after padding attempt for '{midi_path}'. Original shape was {original_pianoroll_shape}")
          return []
 
-
-    if num_timesteps % k != 0:
-        print(f"Internal Warning: Padded pianoroll length ({num_timesteps}) for '{midi_path}' "
-              f"is not a multiple of k ({k}). Original length was {original_pianoroll_shape[0]}. "
-              "This might indicate an issue with the padding logic or an edge case.")
 
     num_segments = num_timesteps // k
     segments = []
@@ -274,10 +269,10 @@ def midi_to_segmented_pianorolls(midi_path: str, k: int, shift=0, mlt=1) -> list
         segment = padded_pianoroll[i * k : (i + 1) * k, :]
         segments.append(np.roll(segment.T, shift, axis=0))
 
-    return np.array(segments)
+    return np.array(segments, dtype=np.uint8)
 
 if __name__ == '__main__':
-    segments = midi_to_segmented_pianorolls("MuseScoreMIDIS2/deb_menu.mid", 128)
+    segments = midi_to_segmented_pianorolls("MuseScoreMIDIS2/chet1004.mid", 128, 0, 2)
     print(segments.shape)
     import matplotlib.pyplot as plt
     plt.imshow(segments[0])
