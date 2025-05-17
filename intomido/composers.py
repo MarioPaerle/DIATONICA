@@ -1,8 +1,9 @@
 import numpy as np
 import random as rd
 
-from functions import multi_hot_to_midi, nearest, cast_pianoroll_to_scale
+from functions import multi_hot_to_midi, nearest, cast_pianoroll_to_scale, midi_to_audio, play_midi_audio
 import matplotlib.pyplot as plt
+import pydub
 from OTHERS.DiscretePolynomialApproximators import polyntepolate, melodic_interpolate
 
 import copy
@@ -139,16 +140,35 @@ class Group:
     def __len__(self):
         return len(self.notes)
 
-class Pattern:
-    def __init__(self, notes, start, subdivision):
-        self.pattern = notes
-        self.subdivision = subdivision
-        self.start = start
+class Pattern(Group):
+    def __init__(self, notes):
+        super().__init__(notes)
+        self.flag = {}
 
-    def transpose(self, k):
-        for note in self.pattern:
-            if isinstance(note, int):
-                note += k
+    def add_flag(self, pos, flag):
+        assert isinstance(flag, str)
+        if pos not in self.flag:
+            self.flag[pos] = [flag]
+        else:
+            self.flag[pos].append(flag)
+
+    def get_flag(self, pos):
+        return self.flag.get(pos, 'none')
+
+    def cast_to(self, scale):
+        self.notes = []
+        for note in self.notes:
+            if note.start in self.flag:
+                if self.get_flag(note.start) == 'pass':
+                    continue
+
+            if note in scale:
+                self.notes.append(scale[note])
+            else:
+                cnote = min(scale, key=lambda x: abs(scale[x] - note))
+                self.notes.append(cnote)
+
+        return self
 
 class Chord(Group):
     def __init__(self, notes):
@@ -223,6 +243,11 @@ class Chord(Group):
 
     def to_chord_progression(self):
         return ChordsProgression(self.separed_chords)
+
+    def show(self):
+        temproll = Pianoroll(16, self.duration() // 16)
+        temproll._add_group(self)
+        temproll.plot()
 
 class ChordsProgression:
     def __init__(self, chords: list[Chord]):
@@ -343,6 +368,13 @@ class Pianoroll:
     def save_to(self, filename):
         multi_hot_to_midi(self.grid.T, time_per_step=.5/self.subdivision).write(filename)
 
+    def tomidi(self):
+        return multi_hot_to_midi(self.grid.T, time_per_step=.5/self.subdivision)
+
+    def play(self):
+        audio = play_midi_audio(self.tomidi())
+        print(audio)
+
     def _add_note(self, note: Note):
         self.added_notes.append(note)
         start = note.start
@@ -372,24 +404,31 @@ class Pianoroll:
         self.grid *= mask.mask
         return self
 
-    def add_list_pattern(self, pattern, subdivision=4, start=0, clamp_end=float('inf'), transpose=0):
+    def add_list_pattern(self, pattern, steps=4, start=0, clamp_end=float('inf'), transpose=0):
         """pattern must be like [67, 65, '-', ...]"""
         time = start
         last_note = None
         for pitch in pattern:
             if pitch not in ('_', '-'):
                 pitch += transpose
-                note = Note(pitch, time, min(time+subdivision, clamp_end), 100)
+                note = Note(pitch, time, min(time + steps, clamp_end), 100)
             elif pitch == '-':
                 note = last_note
-                last_note.end += subdivision
+                last_note.end += steps
             else:
-                note = Pause(time, min(time+subdivision, clamp_end))
+                note = Pause(time, min(time + steps, clamp_end))
 
             last_note = note
             self._add_note(note)
-            time = min(time+subdivision, clamp_end)
+            time = min(time + steps, clamp_end)
+
         return pattern
+
+    def add_chromatic_scale(self, a, b, steps=None, subdivision=4, start=0, clamp_end=float('inf'), transpose=0):
+        if steps is None:
+            steps = abs(a - b)
+        pattern = np.linspace(a, b, steps, dtype=int)
+        self.add_list_pattern(pattern, subdivision, start, clamp_end, transpose)
 
     def add_listed_pattern(self, p, start=0, clamp_end=float('inf')):
         """pattern must be like [67, 65, '-', ...]
@@ -420,6 +459,11 @@ class Pianoroll:
         else:
             self.grid[:, indicies] = cast_pianoroll_to_scale(self.grid[:, indicies].T, scale).T
 
+class RandomPattern:
+    def __init__(self):
+        self.notes = []
+
+
 def chord(pitches, start, end):
     """Tonic must be the first pitch"""
     notes = [Note(p, s, e) for p, s, e in zip(pitches, start, end)]
@@ -428,6 +472,14 @@ def chord(pitches, start, end):
 def easychord(tonic, mod, start, end):
     notes = [Note(tonic, start*16, end*16) + k for k in MOD[mod]]
     return Chord(notes)
+
+def play_list(l, step=4, plot=False):
+    roll = Pianoroll(subdivision=step, bars=len(l)+4)
+    roll.add_list_pattern(l, step, 0)
+    if plot:
+        roll.plot()
+    roll.play()
+
 
 
 MOD = {
@@ -526,23 +578,23 @@ if __name__ == "__main__":
             24,
             16,
             scale=prog.get_pitches(0)),
-        subdivision=4
+        steps=4
     )
     piano.add_list_pattern(
         pattern,
-        subdivision=4,
+        steps=4,
         transpose=2,
         start=64
     )
     piano.add_list_pattern(
         pattern,
-        subdivision=4,
+        steps=4,
         transpose=0,
         start=64*4
     )
     piano.add_list_pattern(
         pattern,
-        subdivision=4,
+        steps=4,
         transpose=2,
         start=64*5
     )
@@ -554,7 +606,7 @@ if __name__ == "__main__":
             64,
             scale=prog.get_pitches(3)),
         start=64*6,
-        subdivision=4
+        steps=4
     )
 
 

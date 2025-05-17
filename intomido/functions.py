@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import pypianoroll
 from numpy.lib.stride_tricks import sliding_window_view
 from scipy.io.wavfile import write
+from IPython.display import Audio
+
 
 
 def midi_to_numpy(midi_path: str, fs: int = 100) -> np.ndarray:
@@ -44,15 +46,41 @@ def plotmidi(midi):
     pypianoroll.plot_multitrack(multitrack, axs=[ax])
     plt.show()
 
-def midi_to_audio(midi_path, fs=44100, outputfile="output.wav", tempo=100):
-    if isinstance(midi_path, str):
-        midi_data = pretty_midi.PrettyMIDI(midi_path, initial_tempo=tempo)
-    else:
-        midi_data = midi_path
-    audio = midi_data.synthesize(fs=fs)
-    scaled_audio = np.int16(audio / np.max(np.abs(audio)) * 32767)
-    write(outputfile, 44100, scaled_audio)
-    return audio
+def midi_to_audio(midi_path, fs=44100, tempo=100, autoplay=False):
+    from IPython.display import Audio
+    pm = midi_path
+
+    wav = pm.synthesize(fs)
+    wav = wav / np.max(np.abs(wav))
+    return Audio(wav, rate=fs, autoplay=True)
+
+import pretty_midi
+import numpy as np
+import sounddevice as sd
+
+def play_midi_audio(midi_input, fs=44100):
+    try:
+        # Se è una stringa, carica il file; altrimenti supponiamo sia già un oggetto PrettyMIDI
+        if isinstance(midi_input, str) and os.path.exists(midi_input):
+            midi_data = pretty_midi.PrettyMIDI(midi_input)
+        elif isinstance(midi_input, pretty_midi.PrettyMIDI):
+            midi_data = midi_input
+        else:
+            raise TypeError("Input deve essere un percorso a un file .mid o un oggetto PrettyMIDI.")
+
+        # Sintetizza l'audio
+        audio = midi_data.synthesize(fs=fs)
+
+        if np.isnan(audio).any() or np.max(np.abs(audio)) == 0:
+            raise ValueError("Audio contiene NaN o è silenzioso.")
+
+        audio /= np.max(np.abs(audio))
+        sd.play(audio, samplerate=fs)
+        sd.wait()
+
+    except Exception as e:
+        print(f"Errore durante la riproduzione: {e}")
+
 
 def midi_to_audio_fluidsynth(midi_path, sf2_path, fs=44100):
     midi_data = pretty_midi.PrettyMIDI(midi_path)
