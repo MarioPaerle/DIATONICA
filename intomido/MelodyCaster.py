@@ -8,7 +8,7 @@ midi = midi[:, 0::3]"""
 """plt.imshow(midi)
 plt.show()"""
 
-progression = Progressions.op64n2.multiply(3).transpose(-12)
+progression = Progressions.op64n2.multiply(12*3).transpose(-12)
 piano = Pianoroll(subdivision=16, bars=32)
 
 

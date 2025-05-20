@@ -57,10 +57,10 @@ def midi_to_audio(midi_path, fs=44100, tempo=100, autoplay=False):
 import pretty_midi
 import numpy as np
 import sounddevice as sd
+import os
 
-def play_midi_audio(midi_input, fs=44100):
+def play_midi_audio(midi_input, fs=44100, play=True):
     try:
-        # Se è una stringa, carica il file; altrimenti supponiamo sia già un oggetto PrettyMIDI
         if isinstance(midi_input, str) and os.path.exists(midi_input):
             midi_data = pretty_midi.PrettyMIDI(midi_input)
         elif isinstance(midi_input, pretty_midi.PrettyMIDI):
@@ -75,11 +75,15 @@ def play_midi_audio(midi_input, fs=44100):
             raise ValueError("Audio contiene NaN o è silenzioso.")
 
         audio /= np.max(np.abs(audio))
-        sd.play(audio, samplerate=fs)
-        sd.wait()
+        if play:
+            sd.play(audio, samplerate=fs)
+            sd.wait()
+        return audio
+
 
     except Exception as e:
         print(f"Errore durante la riproduzione: {e}")
+
 
 
 def midi_to_audio_fluidsynth(midi_path, sf2_path, fs=44100):
