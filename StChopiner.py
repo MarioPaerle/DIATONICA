@@ -29,6 +29,8 @@ melhows = [
     "free",
     "free",
     "free",
+    "free",
+    "free",
     "Simple Repeat",
     "Casted Repeat",
     "UpCast Repeat",
@@ -39,6 +41,7 @@ closehows = [
     "Ballerin",
 
 ]
+
 if True:
     rivolts = [
         10,
@@ -82,6 +85,7 @@ if True:
             ['-', 76, 74, 72, 77, 76, 76],
         ]
     }
+
 def chopiner():
     progression = rd.choice(list(possible_progressions.keys()))
     phrase = rd.choice(phrases)
