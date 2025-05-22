@@ -453,6 +453,35 @@ class Pianoroll:
     def toaudio(self):
         return play_midi_audio(self.tomidi(), play=False)
 
+    def humanize(self):
+        self.grid[self.grid > 0] += np.random.randint(0, 10, self.grid.shape) - 5
+
+    def midi_human(self):
+        import pretty_midi
+        import numpy as np
+
+        import numpy as np
+
+        def apply_velocity_curve(pianoroll, bar_length=12 * 4):
+            _, L = pianoroll.shape
+
+            # 1) build one-bar envelope: env_bar[j] in [20..100..20]
+            x = np.arange(bar_length)
+            env_bar = 20 + 80 * np.sin(np.pi * (x / bar_length)) ** 2  # sin^2 curve
+
+            # 2) tile (and truncate) to length L
+            n_bars = int(np.ceil(L / bar_length))
+            env = np.tile(env_bar, n_bars)[:L]  # shape (L,)
+
+            # 3) apply: wherever pianoroll>0, set velocity=env, else keep 0
+            #    (you could also scale existing velocities by env/100 instead)
+            new_roll = (pianoroll > 0).astype(int) * env[np.newaxis, :]
+
+            return new_roll.astype(int)
+
+        return multi_hot_to_midi(apply_velocity_curve(self.grid.T), time_per_step=.5/self.subdivision)
+
+
     def _add_note(self, note: Note):
         self.added_notes.append(note)
         start = note.start

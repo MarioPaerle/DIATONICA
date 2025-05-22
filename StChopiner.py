@@ -111,6 +111,7 @@ def chopiner():
     for i, word in enumerate(phrase.split()):
         how = melhow[i]
         cast = NoteList(list(set(chords[i].copy().notes_values())))
+
         if word == '|':
             barcount += 1
 
@@ -157,15 +158,16 @@ def chopiner():
     roll.plot()
     roll.transpose(rd.randint(-9, 4))
 
-    roll.save_to('roll.mid')
-    return roll
+    midi = roll.midi_human()
+    midi.write('roll.mid')
+    return roll, midi
 
 st.title("Chopiner 🎹")
 st.subheader('v0.1')
 st.write("Here's a simple Waltzer generator of just 4 bars 😒")
 
 if st.button("generate"):
-    waltzer = chopiner()
+    waltzer, midi = chopiner()
 
     st.pyplot(waltzer.plot())
     st.audio(waltzer.toaudio(), sample_rate=44_100)
