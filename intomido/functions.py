@@ -281,3 +281,26 @@ def cast_pianoroll_to_scale(pianoroll: np.ndarray, scale_notes):
         np.clip(output_slice, 0, max_velocity, out=output_slice)
 
     return output_pianoroll
+
+def minimize_rivolt(a:list, b:list):
+    """This returns a list of notes b which minimizes the distance from notes in a"""
+    errors_configurations = {}
+
+    for i in range(3):
+        errors_configurations[i] = mse_list(a, rivolt(b, i))
+
+    conf_min = min(errors_configurations.keys(), key=lambda x: errors_configurations[x])
+    return rivolt(b, conf_min)
+
+
+def rivolt(a, k):
+    c = a.copy()
+    for i in range(k):
+        c[i] = c[i] + 12
+
+    return sorted(c)
+
+def mse_list(a, b):
+    a = [aa.note for aa in a]
+    b = [bb.note for bb in b]
+    return sum([(aa - bb)**2 for aa, bb in zip(a, b)])

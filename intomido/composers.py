@@ -1,7 +1,8 @@
 import numpy as np
 import random as rd
 
-from intomido.functions import multi_hot_to_midi, nearest, cast_pianoroll_to_scale, midi_to_audio, play_midi_audio
+from intomido.functions import multi_hot_to_midi, nearest, cast_pianoroll_to_scale, midi_to_audio, play_midi_audio, \
+    minimize_rivolt
 import matplotlib.pyplot as plt
 import pydub
 from OTHERS.DiscretePolynomialApproximators import polyntepolate, melodic_interpolate
@@ -59,7 +60,12 @@ class Note:
 
     def __sub__(self, other):
         note = self.copy()
-        note.note -= other
+        note.note = note.note - other
+        return note
+
+    def __pow__(self, power, modulo=None):
+        note = self.copy()
+        note.note = note.note ** power
         return note
 
     def __repr__(self):
@@ -67,6 +73,12 @@ class Note:
 
     def __str__(self):
         return f"Note({self.note}, s:{self.start}, e:{self.end},v: {self.velocity}, N:{self.notation})"
+
+    def __gt__(self, other):
+        return self.note > other.note
+
+    def __lt__(self, other):
+        return self.note < other.note
 
 class Pause:
     def __init__(self, start, end):
@@ -128,7 +140,6 @@ class NoteList:
 
     def __str__(self):
         return f"NoteList({self.roots}):: {self.notes}"
-
 
 class Group:
     def __init__(self, notes):
@@ -216,6 +227,7 @@ class Group:
     def __len__(self):
         return len(self.notes)
 
+
 class Pattern(Group):
     def __init__(self, notes):
         super().__init__(notes)
@@ -264,7 +276,9 @@ class Chord(Group):
         return self.tonic.copy() + -12*octave_down
 
     def __add__(self, other):
-        self.separed_chords.append(self.copy())
+        if len(self.separed_chords) == 0:
+            self.separed_chords.append(self.copy())
+        other.notes = minimize_rivolt(self.notes, other.notes)
         super().__add__(other)
         if isinstance(other, Chord):
             self.separed_chords.append(other.copy())
@@ -370,6 +384,16 @@ class Chord(Group):
         temproll._add_group(self)
         temproll.plot()
 
+    def enlarge(self):
+        if len(self.separed_chords) > 1:
+            print(self.notes)
+            raise NotImplementedError("You're probably trying to enlarge a Multi Chord!")
+
+        self.notes[1] = self.notes[1] + 12
+        self.transpose(-12)
+        return self
+
+
 class ChordsProgression:
     def __init__(self, chords: list[Chord]):
         assert type(all([type(c) == Chord for c in chords]))
@@ -397,6 +421,11 @@ class ChordsProgression:
     def pedal(self):
         for chord in self.chords:
             chord.pedal()
+        return self
+
+    def enlarge(self):
+        for chord in self.chords:
+            chord.enlarge()
         return self
 
     def __getitem__(self, idx):
@@ -481,7 +510,6 @@ class Pianoroll:
 
         return multi_hot_to_midi(apply_velocity_curve(self.grid.T), time_per_step=.5/self.subdivision)
 
-
     def _add_note(self, note: Note):
         self.added_notes.append(note)
         start = note.start
@@ -490,6 +518,11 @@ class Pianoroll:
         self.grid[note.note, start:end-1] = velocity
 
     def _add_group(self, group: Group):
+        if not hasattr(group, 'notes'):
+            try:
+                group = group.to_chord()
+            except AttributeError:
+                pass
         for note in group.notes:
             self._add_note(note)
 
@@ -500,11 +533,15 @@ class Pianoroll:
     def transpose(self, k):
         self.grid = np.roll(self.grid, k, axis=0)
 
-    def plot(self):
-        fig, ax = plt.subplots()
-        ax.imshow(self.grid[::-1, :])
-        fig.show()
-        return fig
+    def plot(self, returns=False):
+        if returns:
+            fig, ax = plt.subplots()
+            ax.imshow(self.grid[::-1, :])
+            fig.show()
+            return fig
+        else:
+            plt.imshow(self.grid[::-1, :])
+            plt.show()
 
     def get_blank_mask(self):
         return Mask(bars=self.bars, barlen=self.subdivision)
@@ -695,6 +732,7 @@ class Progressions(metaclass=CopyArr):
     op64n2_a = (Chords.VImin.waltz() + Chords.IIImaj.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz())# .multiply(3)
     op64n2_b = (Chords.IVmaj.waltz() + Chords.IVmaj.waltz() + Chords.IIImaj.waltz() + Chords.VImin.waltz())# .multiply(3)
     op64n2 = op64n2_a.copy() + op64n2_b.copy()
+
 class Scales:
     Cmajor = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95, 96, 98, 100, 101, 103, 105, 107, 108, 110, 112, 113, 115, 117, 119, 120, 122, 124, 125, 127]
 if __name__ == "__main__":

@@ -164,7 +164,7 @@ def chopiner():
 
 st.title("Chopiner 🎹")
 st.subheader('v0.1')
-st.write("Here's a simple Waltzer generator of just 4 bars 😒")
+st.write("Here's a simple Waltzer generator of just 8 bars 😒")
 
 if st.button("generate"):
     waltzer, midi = chopiner()
