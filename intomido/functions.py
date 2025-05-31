@@ -304,3 +304,18 @@ def mse_list(a, b):
     a = [aa.note for aa in a]
     b = [bb.note for bb in b]
     return sum([(aa - bb)**2 for aa, bb in zip(a, b)])
+
+from music21 import converter
+
+def midi_to_abc(midi_file_path):
+    # Parse the MIDI file
+    midi_stream = converter.parse(midi_file_path)
+
+    # Convert to ABC notation
+    abc_notation = midi_stream.write('abc')
+
+    return abc_notation
+
+if __name__ == '__main__':
+    midi_to_abc("chpn-p19_format0.mid")
+

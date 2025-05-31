@@ -233,26 +233,27 @@ def midi_to_segmented_pianorolls(midi_path: str, k: int, shift=0, div=1) -> list
         print(f"No tracks found in MIDI file: {midi_path}")
         return []
 
-    piano_track = multitrack.tracks[0]
+    # Blend all tracks into a single pianoroll
+    # 'sum' mode will sum the velocities of overlapping notes
+    blended_pianoroll = multitrack.blend(mode='sum')
 
-    if piano_track.is_drum:
-        print(f"Warning: The first track in '{midi_path}' is a drum track. "
-              "Processing it as if it were a piano track.")
-
-    original_pianoroll_shape = piano_track.pianoroll.shape
+    original_pianoroll_shape = blended_pianoroll.shape
 
     if original_pianoroll_shape[0] == 0:
-        print(f"The assumed piano track in '{midi_path}' is empty (contains no notes).")
+        print(f"The blended pianoroll in '{midi_path}' is empty (contains no notes).")
         return []
 
-    piano_track.pad_to_multiple(k)
-    padded_pianoroll = piano_track.pianoroll[0::div]
+    # Create a dummy Track object to use its pad_to_multiple method
+    # This is a workaround because blend() returns a numpy array, not a Track object.
+    # We need to ensure the pianoroll has the necessary methods for padding.
+    dummy_track = pypianoroll.Track(pianoroll=blended_pianoroll)
+    dummy_track.pad_to_multiple(k)
+    padded_pianoroll = dummy_track.pianoroll[0::div]
 
     num_timesteps = padded_pianoroll.shape[0]
-    if num_timesteps == 0 : # Should have been caught by original_pianoroll_shape[0] == 0 check
-         print(f"Info: Piano track became empty after padding attempt for '{midi_path}'. Original shape was {original_pianoroll_shape}")
+    if num_timesteps == 0:
+         print(f"Info: Pianoroll for '{midi_path}' (length {original_pianoroll_shape[0]}) became empty after padding attempt and division. This is unexpected if padding to k occurred correctly.")
          return []
-
 
     num_segments = num_timesteps // k
     segments = []
@@ -263,7 +264,6 @@ def midi_to_segmented_pianorolls(midi_path: str, k: int, shift=0, div=1) -> list
                    "even after padding, resulting in 0 full segments by floor division. "
                    "This is unexpected if padding to k occurred correctly.")
         return []
-
 
     for i in range(num_segments):
         segment = padded_pianoroll[i * k : (i + 1) * k, :]
