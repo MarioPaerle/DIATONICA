@@ -472,11 +472,11 @@ class Pianoroll:
     def save_to(self, filename):
         multi_hot_to_midi(self.grid.T, time_per_step=.5/self.subdivision).write(filename)
 
-    def tomidi(self):
-        return multi_hot_to_midi(self.grid.T, time_per_step=1/self.subdivision)
+    def tomidi(self, speed=1):
+        return multi_hot_to_midi(self.grid.T, time_per_step=speed/self.subdivision)
 
-    def play(self):
-        audio = play_midi_audio(self.tomidi())
+    def play(self, speed=1):
+        audio = play_midi_audio(self.tomidi(speed))
         return audio
 
     def toaudio(self):
